@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
 export interface AuthPayload {
+  userId: number;
   username: string;
 }
 
@@ -27,8 +28,11 @@ export function authMiddleware(
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as AuthPayload;
-    req.user = payload;
+    const decoded = jwt.verify(token, JWT_SECRET) as Record<string, unknown>;
+    // Handle old tokens with `email` instead of `username`
+    const username = (decoded.username ?? decoded.email) as string;
+    const userId = decoded.userId as number;
+    req.user = { userId, username };
     next();
   } catch {
     res.status(401).json({ error: "Invalid token" });

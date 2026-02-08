@@ -61,7 +61,7 @@ authRouter.patch("/username", authMiddleware, async (req, res) => {
   }
 
   const user = await prisma.user.findUnique({
-    where: { username: req.user!.username },
+    where: { id: req.user!.userId },
   });
   if (!user) {
     res.status(404).json({ error: "User not found" });
@@ -105,7 +105,7 @@ authRouter.patch("/password", authMiddleware, async (req, res) => {
   }
 
   const user = await prisma.user.findUnique({
-    where: { username: req.user!.username },
+    where: { id: req.user!.userId },
   });
   if (!user) {
     res.status(404).json({ error: "User not found" });
