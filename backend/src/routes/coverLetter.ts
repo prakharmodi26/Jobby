@@ -64,6 +64,10 @@ async function callVtArcApi(
 }
 
 // Call Google Gemini API (Gemma 3 12B)
+// Gemma models don't support systemInstruction, so we simulate it by:
+// 1. Sending the system prompt as the first "user" message
+// 2. Adding a model acknowledgment
+// 3. Then continuing with the actual conversation
 async function callGeminiApi(
   systemPrompt: string,
   chatMessages: { role: string; content: string }[]
@@ -74,14 +78,25 @@ async function callGeminiApi(
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GOOGLE_API_KEY}`;
 
-  // Convert chat messages to Gemini format
-  // Gemini uses "contents" array with "role" (user/model) and "parts"
+  // Build contents array in Gemini format
   const contents: { role: string; parts: { text: string }[] }[] = [];
 
+  // Step 1: System prompt as first user message
+  contents.push({
+    role: "user",
+    parts: [{ text: systemPrompt }],
+  });
+
+  // Step 2: Model acknowledgment (required - Gemini needs alternating user/model turns)
+  contents.push({
+    role: "model",
+    parts: [{ text: "I understand. I will generate a tailored, professional cover letter based on the candidate's profile and job details provided. I will output only the cover letter text with no additional commentary." }],
+  });
+
+  // Step 3: Add remaining conversation (skip the system message since we handled it)
   for (const msg of chatMessages) {
     if (msg.role === "system") {
-      // System instructions handled separately in Gemini
-      continue;
+      continue; // Already handled above
     }
     contents.push({
       role: msg.role === "assistant" ? "model" : "user",
@@ -89,15 +104,20 @@ async function callGeminiApi(
     });
   }
 
+  console.log(`[CoverLetter] Gemini request with ${contents.length} turns`);
+  console.log(`[CoverLetter] === CONVERSATION BEING SENT TO GEMINI ===`);
+  contents.forEach((turn, i) => {
+    const preview = turn.parts[0].text.substring(0, 200);
+    console.log(`[CoverLetter] Turn ${i + 1} (${turn.role}): ${preview}${turn.parts[0].text.length > 200 ? '...' : ''}`);
+  });
+  console.log(`[CoverLetter] === END CONVERSATION ===`);
+
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: systemPrompt }],
-      },
       contents,
       generationConfig: {
         temperature: 0.7,

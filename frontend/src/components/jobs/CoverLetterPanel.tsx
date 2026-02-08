@@ -103,8 +103,8 @@ export function CoverLetterPanel({ job, onClose }: CoverLetterPanelProps) {
 
   return (
     <div
-      className={`fixed right-0 top-0 bottom-0 w-full max-w-xl bg-white shadow-2xl border-l border-gray-200 flex flex-col z-[60] transition-transform duration-300 ease-out ${
-        isVisible ? "translate-x-0" : "translate-x-full"
+      className={`fixed left-0 top-0 bottom-0 w-full max-w-xl bg-white shadow-2xl border-r border-gray-200 flex flex-col z-[60] transition-transform duration-300 ease-out ${
+        isVisible ? "translate-x-0" : "-translate-x-full"
       }`}
     >
       {/* Header */}
