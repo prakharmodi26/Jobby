@@ -1,7 +1,10 @@
 {
   "name": "my-job-board",
   "private": true,
-  "workspaces": ["backend", "frontend"],
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "scripts": {
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
@@ -19,6 +22,7 @@
     "prisma": "^6.0.0"
   },
   "dependencies": {
+    "@playwright/test": "^1.58.2",
     "@prisma/client": "^6.0.0",
     "bcrypt": "^6.0.0"
   }

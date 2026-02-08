@@ -51,6 +51,8 @@ settingsRouter.put("/", async (req, res) => {
     "recommendedNumPages",
     "recommendedDatePosted",
     "excludePublishers",
+    // Cover letter model
+    "coverLetterModel",
   ];
 
   for (const field of fields) {

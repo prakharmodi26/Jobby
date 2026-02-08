@@ -180,6 +180,19 @@ const DATE_POSTED_OPTIONS = [
   { value: "month", label: "Month" },
 ];
 
+const COVER_LETTER_MODELS = [
+  {
+    value: "vt-arc",
+    label: "VT ARC — GPT-OSS-120B",
+    description: "Requires VT network/VPN and VT_ARC_KEY",
+  },
+  {
+    value: "gemini",
+    label: "Google Gemma 3 12B",
+    description: "Requires GOOGLE_API_KEY",
+  },
+];
+
 /* ------------------------------------------------------------------ */
 /*  Page Component                                                    */
 /* ------------------------------------------------------------------ */
@@ -208,6 +221,9 @@ export default function SettingsPage() {
   const [cronSchedule, setCronSchedule] = useState("0 */12 * * *");
   const [cronPreset, setCronPreset] = useState("0 */12 * * *");
   const [customCron, setCustomCron] = useState("");
+
+  // Cover letter model
+  const [coverLetterModel, setCoverLetterModel] = useState("vt-arc");
 
   // Scoring weights
   const [weightSkillMatch, setWeightSkillMatch] = useState(10);
@@ -267,6 +283,9 @@ export default function SettingsPage() {
       // Cron
       setCronSchedule(settings.cronSchedule);
       deriveCronPreset(settings.cronSchedule);
+
+      // Cover letter model
+      setCoverLetterModel(settings.coverLetterModel || "vt-arc");
 
       // Weights
       setWeightSkillMatch(settings.weightSkillMatch);
@@ -370,6 +389,7 @@ export default function SettingsPage() {
           recommendedDatePosted,
           excludePublishers,
           cronSchedule: resolvedCron,
+          coverLetterModel,
           weightSkillMatch,
           weightTargetTitle,
           weightRecencyDay1,
@@ -598,6 +618,44 @@ export default function SettingsPage() {
             tags={excludePublishers}
             onChange={setExcludePublishers}
           />
+        </Section>
+
+        {/* ==================== Cover Letter Model ==================== */}
+        <Section title="Cover Letter Model">
+          <p className="text-sm text-gray-500 -mt-2 mb-3">
+            Select the AI model used for generating cover letters.
+          </p>
+
+          <div className="space-y-3">
+            {COVER_LETTER_MODELS.map((model) => (
+              <label
+                key={model.value}
+                className={cn(
+                  "flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-colors",
+                  coverLetterModel === model.value
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-200 hover:border-gray-300"
+                )}
+              >
+                <input
+                  type="radio"
+                  name="coverLetterModel"
+                  value={model.value}
+                  checked={coverLetterModel === model.value}
+                  onChange={() => setCoverLetterModel(model.value)}
+                  className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 mt-0.5"
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-900">
+                    {model.label}
+                  </span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {model.description}
+                  </p>
+                </div>
+              </label>
+            ))}
+          </div>
         </Section>
 
         {/* ==================== Cron Schedule ==================== */}

@@ -22,9 +22,17 @@ export function CoverLetterPanel({ job, onClose }: CoverLetterPanelProps) {
   const [followUp, setFollowUp] = useState("");
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const coverLetterRef = useRef<HTMLDivElement>(null);
 
   const latestCoverLetter = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
+
+  // Slide-in animation on mount
+  useEffect(() => {
+    // Small delay to trigger CSS transition
+    const timer = setTimeout(() => setIsVisible(true), 10);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Initial generation
   useEffect(() => {
@@ -94,7 +102,11 @@ export function CoverLetterPanel({ job, onClose }: CoverLetterPanelProps) {
   }
 
   return (
-    <div className="fixed right-0 top-0 bottom-0 w-full max-w-xl bg-white shadow-2xl border-l border-gray-200 flex flex-col z-[60]">
+    <div
+      className={`fixed right-0 top-0 bottom-0 w-full max-w-xl bg-white shadow-2xl border-l border-gray-200 flex flex-col z-[60] transition-transform duration-300 ease-out ${
+        isVisible ? "translate-x-0" : "translate-x-full"
+      }`}
+    >
       {/* Header */}
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
         <div className="flex items-center justify-between">

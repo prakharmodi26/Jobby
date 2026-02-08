@@ -92,6 +92,7 @@ export interface Settings {
   recommendedNumPages: number;
   recommendedDatePosted: string;
   excludePublishers: string[];
+  coverLetterModel: string;
   updatedAt: string;
 }
 

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Job } from "@/lib/types";
 import { formatSalary, formatRelativeDate, STATUS_OPTIONS } from "@/lib/utils";
 import { StatusBadge } from "./StatusBadge";
@@ -28,10 +28,21 @@ export function JobDetailPanel({
     Responsibilities?: string[];
   } | null;
 
+  // Close cover letter panel when job panel closes
+  const handleClose = () => {
+    setShowCoverLetter(false);
+    onClose();
+  };
+
+  // Also close cover letter if job changes
+  useEffect(() => {
+    setShowCoverLetter(false);
+  }, [job.id]);
+
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/30" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/30" onClick={handleClose} />
 
       {/* Panel */}
       <div className="fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl overflow-auto">
@@ -68,7 +79,7 @@ export function JobDetailPanel({
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
             >
               &times;
