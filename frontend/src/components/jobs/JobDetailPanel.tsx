@@ -1,7 +1,9 @@
 "use client";
+import { useState } from "react";
 import type { Job } from "@/lib/types";
 import { formatSalary, formatRelativeDate, STATUS_OPTIONS } from "@/lib/utils";
 import { StatusBadge } from "./StatusBadge";
+import { CoverLetterPanel } from "./CoverLetterPanel";
 
 interface JobDetailPanelProps {
   job: Job;
@@ -19,6 +21,7 @@ export function JobDetailPanel({
   onStatusChange,
 }: JobDetailPanelProps) {
   const salary = formatSalary(job.salaryMin, job.salaryMax, job.salaryPeriod);
+  const [showCoverLetter, setShowCoverLetter] = useState(false);
   const highlights = job.highlights as {
     Qualifications?: string[];
     Benefits?: string[];
@@ -112,6 +115,12 @@ export function JobDetailPanel({
             >
               Apply ↗
             </a>
+            <button
+              onClick={() => setShowCoverLetter(true)}
+              className="text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-lg transition-colors"
+            >
+              ✨ Cover Letter
+            </button>
             {salary && (
               <span className="ml-auto text-sm font-semibold text-emerald-600">
                 {salary}
@@ -184,6 +193,14 @@ export function JobDetailPanel({
           )}
         </div>
       </div>
+
+      {/* Cover Letter Panel */}
+      {showCoverLetter && (
+        <CoverLetterPanel
+          job={job}
+          onClose={() => setShowCoverLetter(false)}
+        />
+      )}
     </div>
   );
 }

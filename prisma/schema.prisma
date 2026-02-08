@@ -44,6 +44,9 @@ model Profile {
   companySizePreference   String   @default("")
   companyTypes            String[] @default([])
 
+  // Cover letter profile (markdown)
+  userMd                  String   @default("")
+
   updatedAt               DateTime @updatedAt
 }
 

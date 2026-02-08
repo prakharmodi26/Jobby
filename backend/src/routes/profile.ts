@@ -30,6 +30,8 @@ profileRouter.put("/", async (req, res) => {
     "education", "degrees",
     // Industry & company
     "industries", "companySizePreference", "companyTypes",
+    // Cover letter profile
+    "userMd",
   ];
 
   for (const field of fields) {

@@ -193,6 +193,10 @@ export default function ProfilePage() {
   const [companySizePreference, setCompanySizePreference] = useState("");
   const [companyTypes, setCompanyTypes] = useState<string[]>([]);
 
+  // Cover letter profile
+  const [userMd, setUserMd] = useState("");
+  const [showMdPreview, setShowMdPreview] = useState(false);
+
   const fetchProfile = useCallback(async () => {
     try {
       const p = await apiFetch<Profile>("/api/profile");
@@ -213,6 +217,7 @@ export default function ProfilePage() {
       setIndustries(p.industries);
       setCompanySizePreference(p.companySizePreference);
       setCompanyTypes(p.companyTypes);
+      setUserMd(p.userMd || "");
     } catch (err) {
       console.error(err);
     } finally {
@@ -247,6 +252,7 @@ export default function ProfilePage() {
           industries,
           companySizePreference,
           companyTypes,
+          userMd,
         }),
       });
       setProfile(updated);
@@ -504,6 +510,55 @@ export default function ProfilePage() {
             tags={companyTypes}
             onChange={setCompanyTypes}
           />
+        </Section>
+
+        {/* Cover Letter Profile */}
+        <Section title="Cover Letter Profile (user.md)">
+          <p className="text-sm text-gray-500 -mt-2 mb-2">
+            Write or upload your full profile in Markdown. This is sent to the AI
+            when generating cover letters. Include experiences, projects,
+            achievements, degrees, and any cover letter instructions (e.g.
+            &quot;sign off with Regards&quot;).
+          </p>
+          <div className="flex items-center gap-3 mb-2">
+            <label className="text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+              Upload .md file
+              <input
+                type="file"
+                accept=".md,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    setUserMd(ev.target?.result as string || "");
+                  };
+                  reader.readAsText(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowMdPreview((v) => !v)}
+              className="text-sm text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {showMdPreview ? "Edit" : "Preview"}
+            </button>
+          </div>
+          {showMdPreview ? (
+            <pre className="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-4 min-h-[200px] max-h-[400px] overflow-auto font-mono">
+              {userMd || "(empty)"}
+            </pre>
+          ) : (
+            <textarea
+              value={userMd}
+              onChange={(e) => setUserMd(e.target.value)}
+              placeholder={"# Your Name\n\n## Experience\n- Software Engineer at ...\n\n## Projects\n- ...\n\n## Instructions\n- Sign off with Regards"}
+              className="w-full min-h-[200px] max-h-[400px] p-4 text-sm font-mono border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow resize-y"
+            />
+          )}
         </Section>
 
         {/* Save button */}

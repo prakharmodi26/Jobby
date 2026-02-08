@@ -60,6 +60,7 @@ export interface Profile {
   industries: string[];
   companySizePreference: string;
   companyTypes: string[];
+  userMd: string;
   updatedAt: string;
 }
 

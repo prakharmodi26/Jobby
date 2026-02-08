@@ -14,6 +14,7 @@ import { jobsRouter } from "./routes/jobs.js";
 import { profileRouter } from "./routes/profile.js";
 import { adminRouter } from "./routes/admin.js";
 import { settingsRouter } from "./routes/settings.js";
+import { coverLetterRouter } from "./routes/coverLetter.js";
 import { startScheduler } from "./scheduler/cron.js";
 
 const app = express();
@@ -51,6 +52,7 @@ app.use("/api/jobs", authMiddleware, jobsRouter);
 app.use("/api/profile", authMiddleware, profileRouter);
 app.use("/api/admin", authMiddleware, adminRouter);
 app.use("/api/settings", authMiddleware, settingsRouter);
+app.use("/api/cover-letter", authMiddleware, coverLetterRouter);
 
 // Health check
 app.get("/health", (_req, res) => {
