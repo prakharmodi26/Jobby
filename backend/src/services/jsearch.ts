@@ -81,17 +81,27 @@ export async function searchJobs(
       params.exclude_job_publishers
     );
 
+  console.log(`[JSearch] → GET ${url.toString()}`);
+  console.log(`[JSearch]   API key present: ${!!API_KEY} (length: ${API_KEY.length})`);
+
+  const start = Date.now();
   const res = await fetch(url.toString(), {
     headers: {
       "x-rapidapi-key": API_KEY,
       "x-rapidapi-host": "jsearch.p.rapidapi.com",
     },
   });
+  const ms = Date.now() - start;
 
   if (!res.ok) {
     const text = await res.text();
+    console.error(`[JSearch] ← ${res.status} FAILED (${ms}ms): ${text}`);
     throw new Error(`JSearch API error ${res.status}: ${text}`);
   }
 
-  return res.json();
+  const json: JSearchResponse = await res.json();
+  console.log(
+    `[JSearch] ← ${res.status} OK (${ms}ms) — ${json.data?.length ?? 0} jobs, status="${json.status}", request_id=${json.request_id}`
+  );
+  return json;
 }

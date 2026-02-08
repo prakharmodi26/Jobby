@@ -170,12 +170,15 @@ jobsRouter.get("/search", async (req, res) => {
     employment_types,
   } = req.query;
 
+  console.log(`[Search] Incoming request — query="${query}", page=${page}, country=${country}, date_posted=${date_posted}, remote=${work_from_home}, types=${employment_types}`);
+
   if (!query) {
+    console.log("[Search] Rejected: missing query parameter");
     res.status(400).json({ error: "query is required" });
     return;
   }
 
-  const results = await searchJobs({
+  const searchParams = {
     query: query as string,
     page: parseInt(page as string) || 1,
     num_pages: 1,
@@ -183,24 +186,48 @@ jobsRouter.get("/search", async (req, res) => {
     date_posted: (date_posted as string) || undefined,
     work_from_home: work_from_home === "true" || undefined,
     employment_types: (employment_types as string) || undefined,
-  });
+  };
+
+  let results;
+  try {
+    results = await searchJobs(searchParams);
+  } catch (err) {
+    console.error("[Search] JSearch API call failed:", err);
+    throw err;
+  }
+
+  console.log(`[Search] JSearch returned ${results.data?.length ?? 0} jobs`);
 
   // Upsert each result into local DB for dedup + save capability
   const localJobs = [];
+  let newCount = 0;
+  let dupeCount = 0;
+  let errorCount = 0;
+
   for (const apiJob of results.data) {
-    const { jobId } = await upsertJob(apiJob);
-    const job = await prisma.job.findUnique({
-      where: { id: jobId },
-      include: { savedJobs: true },
-    });
-    if (job) {
-      localJobs.push({
-        ...job,
-        savedStatus: job.savedJobs[0]?.status ?? null,
-        savedId: job.savedJobs[0]?.id ?? null,
+    try {
+      const { jobId, isNew } = await upsertJob(apiJob);
+      if (isNew) newCount++;
+      else dupeCount++;
+      const job = await prisma.job.findUnique({
+        where: { id: jobId },
+        include: { savedJobs: true },
       });
+      if (job) {
+        localJobs.push({
+          ...job,
+          savedStatus: job.savedJobs[0]?.status ?? null,
+          savedId: job.savedJobs[0]?.id ?? null,
+        });
+      }
+    } catch (err) {
+      errorCount++;
+      console.error(`[Search] Failed to upsert job "${apiJob.job_title}" (${apiJob.job_id}):`, err);
     }
   }
+
+  console.log(`[Search] Upsert results — new: ${newCount}, dupes: ${dupeCount}, errors: ${errorCount}`);
+  console.log(`[Search] Responding with ${localJobs.length} jobs`);
 
   res.json({ jobs: localJobs, total: localJobs.length });
 });

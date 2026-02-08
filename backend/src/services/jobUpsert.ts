@@ -31,10 +31,10 @@ function canonicalizeUrl(url: string): string | null {
 function computeFingerprint(
   company: string,
   title: string,
-  location: string,
+  location: string | null,
   postedAt: string | null
 ): string {
-  const raw = [company, title, location, postedAt || ""]
+  const raw = [company || "", title || "", location || "", postedAt || ""]
     .map((s) => s.toLowerCase().trim())
     .join("|");
   return createHash("sha256").update(raw).digest("hex");
@@ -110,5 +110,6 @@ export async function upsertJob(apiJob: JSearchJob): Promise<UpsertResult> {
 
   // No match found — create new job
   const job = await prisma.job.create({ data: jobData });
+  console.log(`[Upsert] NEW job id=${job.id} — "${apiJob.job_title}" at ${apiJob.employer_name}`);
   return { jobId: job.id, isNew: true };
 }
