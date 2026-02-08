@@ -7,6 +7,7 @@ interface JobDetailPanelProps {
   job: Job;
   onClose: () => void;
   onSave?: (jobId: number) => void;
+  onApply?: (jobId: number) => void;
   onStatusChange?: (jobId: number, savedId: number, status: string) => void;
 }
 
@@ -14,6 +15,7 @@ export function JobDetailPanel({
   job,
   onClose,
   onSave,
+  onApply,
   onStatusChange,
 }: JobDetailPanelProps) {
   const salary = formatSalary(job.salaryMin, job.salaryMax, job.salaryPeriod);
@@ -105,6 +107,7 @@ export function JobDetailPanel({
               href={job.applyUrl}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => onApply?.(job.id)}
               className="text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg transition-colors"
             >
               Apply ↗

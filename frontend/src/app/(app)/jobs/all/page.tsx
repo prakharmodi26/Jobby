@@ -6,8 +6,15 @@ import { JobDetailPanel } from "@/components/jobs/JobDetailPanel";
 import { formatSalary, formatRelativeDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
-type SortCol = "discoveredAt" | "title" | "company" | "salaryMin" | "postedAt" | "score";
+type SortCol = "discoveredAt" | "title" | "company" | "salaryMin" | "postedAt" | "score" | "employmentType";
 type SortOrder = "asc" | "desc";
+
+const EMPLOYMENT_TYPE_OPTIONS = [
+  { value: "FULLTIME", label: "Full-time" },
+  { value: "PARTTIME", label: "Part-time" },
+  { value: "CONTRACTOR", label: "Contract" },
+  { value: "INTERN", label: "Intern" },
+];
 
 function ScoreBadge({ score }: { score: number }) {
   const color =
@@ -34,6 +41,7 @@ export default function AllJobsPage() {
   // Filters
   const [search, setSearch] = useState("");
   const [remoteOnly, setRemoteOnly] = useState(false);
+  const [employmentTypeFilter, setEmploymentTypeFilter] = useState("");
   const [sort, setSort] = useState<SortCol>("discoveredAt");
   const [order, setOrder] = useState<SortOrder>("desc");
 
@@ -50,6 +58,7 @@ export default function AllJobsPage() {
       });
       if (search.trim()) params.set("search", search.trim());
       if (remoteOnly) params.set("remote", "true");
+      if (employmentTypeFilter) params.set("employmentType", employmentTypeFilter);
 
       const res = await apiFetch<{
         jobs: Job[];
@@ -66,7 +75,7 @@ export default function AllJobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, sort, order, search, remoteOnly]);
+  }, [page, sort, order, search, remoteOnly, employmentTypeFilter]);
 
   useEffect(() => {
     fetchJobs();
@@ -86,6 +95,16 @@ export default function AllJobsPage() {
     await apiFetch(`/api/jobs/${jobId}/save`, { method: "POST" });
     setJobs((prev) =>
       prev.map((j) => (j.id === jobId ? { ...j, savedStatus: "saved" } : j))
+    );
+  };
+
+  const handleApply = async (jobId: number) => {
+    await apiFetch(`/api/jobs/${jobId}/save`, {
+      method: "POST",
+      body: JSON.stringify({ status: "applied" }),
+    });
+    setJobs((prev) =>
+      prev.map((j) => (j.id === jobId ? { ...j, savedStatus: "applied" } : j))
     );
   };
 
@@ -138,6 +157,24 @@ export default function AllJobsPage() {
         >
           Remote only
         </button>
+        {EMPLOYMENT_TYPE_OPTIONS.map((type) => (
+          <button
+            key={type.value}
+            type="button"
+            onClick={() => {
+              setEmploymentTypeFilter((prev) => prev === type.value ? "" : type.value);
+              setPage(1);
+            }}
+            className={cn(
+              "text-sm px-3 py-2 rounded-lg border transition-colors",
+              employmentTypeFilter === type.value
+                ? "bg-blue-50 text-blue-700 border-blue-300"
+                : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+            )}
+          >
+            {type.label}
+          </button>
+        ))}
         <span className="text-sm text-gray-400 ml-auto">
           {total} job{total !== 1 ? "s" : ""}
         </span>
@@ -151,7 +188,7 @@ export default function AllJobsPage() {
               <SortHeader col="title" label="Title" />
               <SortHeader col="company" label="Company" />
               <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-              <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <SortHeader col="employmentType" label="Type" />
               <SortHeader col="salaryMin" label="Salary" />
               <SortHeader col="score" label="Score" />
               <SortHeader col="postedAt" label="Posted" />
@@ -246,7 +283,10 @@ export default function AllJobsPage() {
                         href={job.applyUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleApply(job.id);
+                        }}
                         className="text-[11px] font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded transition-colors"
                       >
                         Apply
@@ -290,6 +330,7 @@ export default function AllJobsPage() {
           job={selectedJob}
           onClose={() => setSelectedJob(null)}
           onSave={handleSave}
+          onApply={handleApply}
         />
       )}
     </div>

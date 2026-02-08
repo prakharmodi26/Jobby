@@ -7,6 +7,7 @@ interface JobCardProps {
   job: Job;
   onSave?: (jobId: number) => void;
   onIgnore?: (jobId: number) => void;
+  onApply?: (jobId: number) => void;
   onClick?: (job: Job) => void;
   showScore?: boolean;
 }
@@ -15,6 +16,7 @@ export function JobCard({
   job,
   onSave,
   onIgnore,
+  onApply,
   onClick,
   showScore,
 }: JobCardProps) {
@@ -113,7 +115,10 @@ export function JobCard({
           href={job.applyUrl}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onApply?.(job.id);
+          }}
           className="ml-auto text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
         >
           Apply ↗

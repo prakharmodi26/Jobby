@@ -57,6 +57,18 @@ jobsRouter.post("/:id/save", async (req, res) => {
   const jobId = parseInt(req.params.id);
   const { status } = req.body;
 
+  const updateData: Record<string, unknown> = {};
+  if (status) {
+    updateData.status = status;
+    if (status !== "saved") {
+      // Set appliedAt only if not already set
+      const existing = await prisma.savedJob.findUnique({ where: { jobId } });
+      if (!existing?.appliedAt) {
+        updateData.appliedAt = new Date();
+      }
+    }
+  }
+
   const saved = await prisma.savedJob.upsert({
     where: { jobId },
     create: {
@@ -64,7 +76,7 @@ jobsRouter.post("/:id/save", async (req, res) => {
       status: status || "saved",
       appliedAt: status && status !== "saved" ? new Date() : null,
     },
-    update: {},
+    update: updateData,
   });
 
   res.json(saved);
@@ -113,7 +125,7 @@ jobsRouter.get("/saved", async (req, res) => {
     jobs: savedJobs.map((s) => ({
       ...s.job,
       savedId: s.id,
-      status: s.status,
+      savedStatus: s.status,
       notes: s.notes,
       appliedAt: s.appliedAt,
       savedCreatedAt: s.createdAt,
@@ -300,7 +312,7 @@ jobsRouter.get("/all", async (req, res) => {
   // For score sorting we need to score in-memory
   const sortByScore = sort === "score";
 
-  const validSortColumns = ["discoveredAt", "title", "company", "salaryMin", "postedAt"];
+  const validSortColumns = ["discoveredAt", "title", "company", "salaryMin", "postedAt", "employmentType"];
   const orderBy: Record<string, string> = {};
   if (!sortByScore && validSortColumns.includes(sort)) {
     orderBy[sort] = order;

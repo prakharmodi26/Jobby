@@ -34,6 +34,14 @@ export default function RecommendedPage() {
     fetchJobs();
   };
 
+  const handleApply = async (jobId: number) => {
+    await apiFetch(`/api/jobs/${jobId}/save`, {
+      method: "POST",
+      body: JSON.stringify({ status: "applied" }),
+    });
+    fetchJobs();
+  };
+
   const handleIgnore = async (jobId: number) => {
     await apiFetch(`/api/jobs/${jobId}/ignore`, { method: "POST" });
     fetchJobs();
@@ -73,6 +81,7 @@ export default function RecommendedPage() {
             job={job}
             showScore
             onSave={handleSave}
+            onApply={handleApply}
             onIgnore={handleIgnore}
             onClick={setSelectedJob}
           />
@@ -107,6 +116,7 @@ export default function RecommendedPage() {
           job={selectedJob}
           onClose={() => setSelectedJob(null)}
           onSave={handleSave}
+          onApply={handleApply}
         />
       )}
     </div>

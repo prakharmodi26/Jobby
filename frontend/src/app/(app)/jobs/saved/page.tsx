@@ -66,6 +66,14 @@ export default function SavedPage() {
     fetchJobs();
   };
 
+  const handleApply = async (jobId: number) => {
+    await apiFetch(`/api/jobs/${jobId}/save`, {
+      method: "POST",
+      body: JSON.stringify({ status: "applied" }),
+    });
+    fetchJobs();
+  };
+
   const handleRemove = async (savedId: number) => {
     if (!confirm("Remove this job from saved?")) return;
     await apiFetch(`/api/jobs/saved/${savedId}`, { method: "DELETE" });
@@ -242,6 +250,7 @@ export default function SavedPage() {
                     href={job.applyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => handleApply(job.id)}
                     className="ml-auto text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
                   >
                     Apply ↗
@@ -282,6 +291,7 @@ export default function SavedPage() {
         <JobDetailPanel
           job={selectedJob}
           onClose={() => setSelectedJob(null)}
+          onApply={handleApply}
           onStatusChange={(_jobId, savedId, status) => {
             handleStatusChange(savedId, status);
             setSelectedJob(null);

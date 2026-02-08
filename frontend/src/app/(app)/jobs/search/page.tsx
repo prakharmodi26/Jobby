@@ -168,6 +168,18 @@ export default function SearchPage() {
     );
   };
 
+  const handleApply = async (jobId: number) => {
+    await apiFetch(`/api/jobs/${jobId}/save`, {
+      method: "POST",
+      body: JSON.stringify({ status: "applied" }),
+    });
+    setJobs((prev) =>
+      prev.map((j) =>
+        j.id === jobId ? { ...j, savedStatus: "applied" } : j
+      )
+    );
+  };
+
   const toggleType = (type: string) => {
     setSelectedTypes((prev) =>
       prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
@@ -368,6 +380,7 @@ export default function SearchPage() {
                 key={job.id}
                 job={job}
                 onSave={handleSave}
+                onApply={handleApply}
                 onClick={setSelectedJob}
                 showScore
               />
@@ -388,6 +401,7 @@ export default function SearchPage() {
           job={selectedJob}
           onClose={() => setSelectedJob(null)}
           onSave={handleSave}
+          onApply={handleApply}
         />
       )}
     </div>
