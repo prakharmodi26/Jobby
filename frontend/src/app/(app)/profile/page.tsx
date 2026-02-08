@@ -71,6 +71,97 @@ function TagInput({
   );
 }
 
+function Toggle({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-gray-700">{label}</p>
+        <p className="text-xs text-gray-500">{description}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={cn(
+          "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+          checked ? "bg-blue-600" : "bg-gray-200"
+        )}
+      >
+        <span
+          className={cn(
+            "inline-block h-4 w-4 rounded-full bg-white transition-transform shadow-sm",
+            checked ? "translate-x-6" : "translate-x-1"
+          )}
+        />
+      </button>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-t border-gray-200 pt-6 mt-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">{title}</h2>
+      <div className="space-y-4">{children}</div>
+    </div>
+  );
+}
+
+const SENIORITY_OPTIONS = [
+  { value: "", label: "Any / Not set" },
+  { value: "junior", label: "Junior" },
+  { value: "mid", label: "Mid-level" },
+  { value: "senior", label: "Senior" },
+  { value: "lead", label: "Lead" },
+  { value: "staff", label: "Staff / Principal" },
+];
+
+const WORK_MODE_OPTIONS = [
+  { value: "", label: "Any" },
+  { value: "remote", label: "Remote" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "onsite", label: "Onsite" },
+];
+
+const EDUCATION_OPTIONS = [
+  { value: "", label: "Not set" },
+  { value: "none", label: "No degree" },
+  { value: "associate", label: "Associate" },
+  { value: "bachelors", label: "Bachelor's" },
+  { value: "masters", label: "Master's" },
+  { value: "phd", label: "PhD" },
+];
+
+const COMPANY_SIZE_OPTIONS = [
+  { value: "", label: "Any" },
+  { value: "startup", label: "Startup" },
+  { value: "mid", label: "Mid-size" },
+  { value: "enterprise", label: "Enterprise" },
+];
+
+const ROLE_TYPES = [
+  { value: "FULLTIME", label: "Full-time" },
+  { value: "PARTTIME", label: "Part-time" },
+  { value: "CONTRACTOR", label: "Contract" },
+  { value: "INTERN", label: "Intern" },
+];
+
+const DATE_POSTED_OPTIONS = [
+  { value: "today", label: "Today" },
+  { value: "3days", label: "3 Days" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+];
+
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,13 +184,46 @@ export default function ProfilePage() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState("");
 
-  // Form state
+  // Core targeting
   const [targetTitles, setTargetTitles] = useState<string[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [preferredLocations, setPreferredLocations] = useState<string[]>([]);
   const [remotePreferred, setRemotePreferred] = useState(false);
   const [citizenshipNotRequired, setCitizenshipNotRequired] = useState(true);
   const [workAuthorization, setWorkAuthorization] = useState("");
+
+  // Role preferences
+  const [seniority, setSeniority] = useState("");
+  const [yearsOfExperience, setYearsOfExperience] = useState<string>("");
+  const [roleTypes, setRoleTypes] = useState<string[]>([]);
+  const [workModePreference, setWorkModePreference] = useState("");
+
+  // Compensation
+  const [minSalary, setMinSalary] = useState<string>("");
+  const [maxSalary, setMaxSalary] = useState<string>("");
+
+  // Skills depth
+  const [primarySkills, setPrimarySkills] = useState<string[]>([]);
+  const [secondarySkills, setSecondarySkills] = useState<string[]>([]);
+
+  // Education
+  const [education, setEducation] = useState("");
+  const [degrees, setDegrees] = useState<string[]>([]);
+
+  // Industry & company
+  const [industries, setIndustries] = useState<string[]>([]);
+  const [companySizePreference, setCompanySizePreference] = useState("");
+  const [companyTypes, setCompanyTypes] = useState<string[]>([]);
+
+  // Location
+  const [locationRadius, setLocationRadius] = useState<string>("");
+  const [timezonePreference, setTimezonePreference] = useState("");
+
+  // Search settings
+  const [searchNumPages, setSearchNumPages] = useState(5);
+  const [recommendedNumPages, setRecommendedNumPages] = useState(3);
+  const [recommendedDatePosted, setRecommendedDatePosted] = useState("week");
+  const [excludePublishers, setExcludePublishers] = useState<string[]>([]);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -114,6 +238,25 @@ export default function ProfilePage() {
       setRemotePreferred(p.remotePreferred);
       setCitizenshipNotRequired(p.citizenshipNotRequired);
       setWorkAuthorization(p.workAuthorization);
+      setSeniority(p.seniority);
+      setYearsOfExperience(p.yearsOfExperience != null ? String(p.yearsOfExperience) : "");
+      setRoleTypes(p.roleTypes);
+      setWorkModePreference(p.workModePreference);
+      setMinSalary(p.minSalary != null ? String(p.minSalary) : "");
+      setMaxSalary(p.maxSalary != null ? String(p.maxSalary) : "");
+      setPrimarySkills(p.primarySkills);
+      setSecondarySkills(p.secondarySkills);
+      setEducation(p.education);
+      setDegrees(p.degrees);
+      setIndustries(p.industries);
+      setCompanySizePreference(p.companySizePreference);
+      setCompanyTypes(p.companyTypes);
+      setLocationRadius(p.locationRadius != null ? String(p.locationRadius) : "");
+      setTimezonePreference(p.timezonePreference);
+      setSearchNumPages(p.searchNumPages);
+      setRecommendedNumPages(p.recommendedNumPages);
+      setRecommendedDatePosted(p.recommendedDatePosted);
+      setExcludePublishers(p.excludePublishers);
       setEmail(me.email);
     } catch (err) {
       console.error(err);
@@ -139,6 +282,25 @@ export default function ProfilePage() {
           remotePreferred,
           citizenshipNotRequired,
           workAuthorization,
+          seniority,
+          yearsOfExperience: yearsOfExperience ? parseInt(yearsOfExperience) : null,
+          roleTypes,
+          workModePreference,
+          minSalary: minSalary ? parseInt(minSalary) : null,
+          maxSalary: maxSalary ? parseInt(maxSalary) : null,
+          primarySkills,
+          secondarySkills,
+          education,
+          degrees,
+          industries,
+          companySizePreference,
+          companyTypes,
+          locationRadius: locationRadius ? parseInt(locationRadius) : null,
+          timezonePreference,
+          searchNumPages,
+          recommendedNumPages,
+          recommendedDatePosted,
+          excludePublishers,
         }),
       });
       setProfile(updated);
@@ -220,6 +382,12 @@ export default function ProfilePage() {
     }
   };
 
+  const toggleRoleType = (type: string) => {
+    setRoleTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -238,7 +406,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="space-y-6">
-        {/* Tag inputs */}
+        {/* Core targeting */}
         <TagInput
           label="Target Job Titles"
           placeholder="e.g. Software Engineer, Full Stack Developer..."
@@ -262,64 +430,20 @@ export default function ProfilePage() {
 
         {/* Toggles */}
         <div className="space-y-4 pt-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-700">
-                Remote Preferred
-              </p>
-              <p className="text-xs text-gray-500">
-                Boost remote positions in recommendations
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setRemotePreferred(!remotePreferred)}
-              className={cn(
-                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                remotePreferred ? "bg-blue-600" : "bg-gray-200"
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-block h-4 w-4 rounded-full bg-white transition-transform shadow-sm",
-                  remotePreferred ? "translate-x-6" : "translate-x-1"
-                )}
-              />
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-700">
-                Citizenship Not Required
-              </p>
-              <p className="text-xs text-gray-500">
-                Penalize jobs requiring US citizenship / security clearance
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() =>
-                setCitizenshipNotRequired(!citizenshipNotRequired)
-              }
-              className={cn(
-                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                citizenshipNotRequired ? "bg-blue-600" : "bg-gray-200"
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-block h-4 w-4 rounded-full bg-white transition-transform shadow-sm",
-                  citizenshipNotRequired
-                    ? "translate-x-6"
-                    : "translate-x-1"
-                )}
-              />
-            </button>
-          </div>
+          <Toggle
+            label="Remote Preferred"
+            description="Boost remote positions in recommendations"
+            checked={remotePreferred}
+            onChange={setRemotePreferred}
+          />
+          <Toggle
+            label="Citizenship Not Required"
+            description="Penalize jobs requiring US citizenship / security clearance"
+            checked={citizenshipNotRequired}
+            onChange={setCitizenshipNotRequired}
+          />
         </div>
 
-        {/* Work authorization */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Work Authorization
@@ -332,6 +456,269 @@ export default function ProfilePage() {
             className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
           />
         </div>
+
+        {/* Role Preferences */}
+        <Section title="Role Preferences">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Seniority Level
+              </label>
+              <select
+                value={seniority}
+                onChange={(e) => setSeniority(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {SENIORITY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Work Mode
+              </label>
+              <select
+                value={workModePreference}
+                onChange={(e) => setWorkModePreference(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {WORK_MODE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Years of Experience
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={yearsOfExperience}
+              onChange={(e) => setYearsOfExperience(e.target.value)}
+              placeholder="e.g. 5"
+              className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Role Types
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {ROLE_TYPES.map((type) => (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => toggleRoleType(type.value)}
+                  className={cn(
+                    "text-sm px-3 py-2 rounded-lg border transition-colors",
+                    roleTypes.includes(type.value)
+                      ? "bg-blue-50 text-blue-700 border-blue-300"
+                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                  )}
+                >
+                  {type.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </Section>
+
+        {/* Compensation */}
+        <Section title="Compensation">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Minimum Salary
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={minSalary}
+                  onChange={(e) => setMinSalary(e.target.value)}
+                  placeholder="e.g. 100000"
+                  className="w-full pl-7 pr-4 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Maximum Salary
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={maxSalary}
+                  onChange={(e) => setMaxSalary(e.target.value)}
+                  placeholder="e.g. 200000"
+                  className="w-full pl-7 pr-4 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                />
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        {/* Skills Depth */}
+        <Section title="Skills">
+          <TagInput
+            label="Primary Skills"
+            placeholder="Your strongest skills: e.g. React, Python, AWS..."
+            tags={primarySkills}
+            onChange={setPrimarySkills}
+          />
+          <TagInput
+            label="Secondary Skills"
+            placeholder="Nice-to-have: e.g. Docker, GraphQL, Redis..."
+            tags={secondarySkills}
+            onChange={setSecondarySkills}
+          />
+        </Section>
+
+        {/* Education */}
+        <Section title="Education">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Highest Education
+            </label>
+            <select
+              value={education}
+              onChange={(e) => setEducation(e.target.value)}
+              className="w-full text-sm border border-gray-300 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {EDUCATION_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <TagInput
+            label="Degrees / Fields of Study"
+            placeholder="e.g. Computer Science, Mathematics..."
+            tags={degrees}
+            onChange={setDegrees}
+          />
+        </Section>
+
+        {/* Industry & Company */}
+        <Section title="Industry & Company">
+          <TagInput
+            label="Industry Preferences"
+            placeholder="e.g. fintech, healthcare, SaaS..."
+            tags={industries}
+            onChange={setIndustries}
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Company Size Preference
+            </label>
+            <select
+              value={companySizePreference}
+              onChange={(e) => setCompanySizePreference(e.target.value)}
+              className="w-full text-sm border border-gray-300 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {COMPANY_SIZE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <TagInput
+            label="Company Types"
+            placeholder="e.g. product, consulting, agency..."
+            tags={companyTypes}
+            onChange={setCompanyTypes}
+          />
+        </Section>
+
+        {/* Location */}
+        <Section title="Location">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Search Radius (km)
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={locationRadius}
+                onChange={(e) => setLocationRadius(e.target.value)}
+                placeholder="e.g. 50"
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Timezone Preference
+              </label>
+              <input
+                type="text"
+                value={timezonePreference}
+                onChange={(e) => setTimezonePreference(e.target.value)}
+                placeholder="e.g. US/Eastern, UTC-5"
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+              />
+            </div>
+          </div>
+        </Section>
+
+        {/* Search Settings */}
+        <Section title="Search Settings">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Default Pages per Search
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={searchNumPages}
+                onChange={(e) => setSearchNumPages(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-400 mt-0.5">1 credit per page</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Recommended: Pages/Query
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={recommendedNumPages}
+                onChange={(e) => setRecommendedNumPages(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Recommended: Date Filter
+              </label>
+              <select
+                value={recommendedDatePosted}
+                onChange={(e) => setRecommendedDatePosted(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {DATE_POSTED_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <TagInput
+            label="Exclude Publishers"
+            placeholder="e.g. BeeBe, Dice..."
+            tags={excludePublishers}
+            onChange={setExcludePublishers}
+          />
+        </Section>
 
         {/* Save button */}
         <div className="flex items-center gap-3 pt-2">
@@ -350,11 +737,8 @@ export default function ProfilePage() {
         </div>
 
         {/* Run Recommended section */}
-        <div className="border-t border-gray-200 pt-6 mt-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">
-            Recommended Pull
-          </h2>
-          <p className="text-sm text-gray-500 mb-4">
+        <Section title="Recommended Pull">
+          <p className="text-sm text-gray-500 -mt-2 mb-2">
             Fetch new job listings based on your profile. Runs automatically
             every 4 hours.
           </p>
@@ -384,16 +768,12 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
-        </div>
+        </Section>
 
         {/* Account Settings */}
-        <div className="border-t border-gray-200 pt-6 mt-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Account Settings
-          </h2>
-
+        <Section title="Account Settings">
           {/* Change email */}
-          <div className="space-y-3 mb-6">
+          <div className="space-y-3">
             <label className="block text-sm font-medium text-gray-700">
               Email
             </label>
@@ -474,7 +854,7 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
-        </div>
+        </Section>
 
         {/* Last updated */}
         {profile?.updatedAt && (

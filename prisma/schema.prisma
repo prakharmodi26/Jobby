@@ -17,12 +17,48 @@ model User {
 
 model Profile {
   id                      Int      @id @default(autoincrement())
+
+  // Core targeting
   targetTitles            String[] @default([])
   skills                  String[] @default([])
   preferredLocations      String[] @default([])
   remotePreferred         Boolean  @default(false)
   citizenshipNotRequired  Boolean  @default(true)
   workAuthorization       String   @default("")
+
+  // Role preferences
+  seniority               String   @default("")
+  yearsOfExperience       Int?
+  roleTypes               String[] @default([])
+  workModePreference      String   @default("")
+
+  // Compensation
+  minSalary               Int?
+  maxSalary               Int?
+
+  // Skills depth
+  primarySkills           String[] @default([])
+  secondarySkills         String[] @default([])
+
+  // Education
+  education               String   @default("")
+  degrees                 String[] @default([])
+
+  // Industry & company
+  industries              String[] @default([])
+  companySizePreference   String   @default("")
+  companyTypes            String[] @default([])
+
+  // Location
+  locationRadius          Int?
+  timezonePreference      String   @default("")
+
+  // Search/Recommendation settings
+  searchNumPages          Int      @default(5)
+  recommendedNumPages     Int      @default(3)
+  recommendedDatePosted   String   @default("week")
+  excludePublishers       String[] @default([])
+
   updatedAt               DateTime @updatedAt
 }
 

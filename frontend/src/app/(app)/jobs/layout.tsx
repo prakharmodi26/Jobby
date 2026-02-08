@@ -7,6 +7,7 @@ const TABS = [
   { href: "/jobs/recommended", label: "Recommended" },
   { href: "/jobs/saved", label: "Saved" },
   { href: "/jobs/search", label: "Search" },
+  { href: "/jobs/all", label: "All Jobs" },
 ];
 
 export default function JobsLayout({

@@ -2,6 +2,8 @@ import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { searchJobs } from "../services/jsearch.js";
 import { upsertJob } from "../services/jobUpsert.js";
+import { scoreJob } from "../services/scoring.js";
+import type { Prisma } from "@prisma/client";
 
 export const jobsRouter = Router();
 
@@ -159,18 +161,25 @@ jobsRouter.delete("/saved/:id", async (req, res) => {
   res.json({ success: true });
 });
 
-// GET /api/jobs/search — proxy to JSearch, upsert results
+// ---------------------------------------------------------------------------
+// GET /api/jobs/search — proxy to JSearch, upsert results, return with scores
+// ---------------------------------------------------------------------------
 jobsRouter.get("/search", async (req, res) => {
   const {
     query,
     page,
+    num_pages,
     country,
+    language,
     date_posted,
     work_from_home,
     employment_types,
+    job_requirements,
+    radius,
+    exclude_job_publishers,
   } = req.query;
 
-  console.log(`[Search] Incoming request — query="${query}", page=${page}, country=${country}, date_posted=${date_posted}, remote=${work_from_home}, types=${employment_types}`);
+  console.log(`[Search] Incoming request — query="${query}", page=${page}, num_pages=${num_pages}, country=${country}, date_posted=${date_posted}, remote=${work_from_home}, types=${employment_types}, requirements=${job_requirements}, radius=${radius}`);
 
   if (!query) {
     console.log("[Search] Rejected: missing query parameter");
@@ -178,14 +187,28 @@ jobsRouter.get("/search", async (req, res) => {
     return;
   }
 
+  // Load profile for defaults and scoring
+  const profile = await prisma.profile.findFirst();
+
+  // Build search params — user-provided values override profile defaults
   const searchParams = {
     query: query as string,
     page: parseInt(page as string) || 1,
-    num_pages: 1,
+    num_pages: parseInt(num_pages as string) || profile?.searchNumPages || 5,
     country: (country as string) || "us",
+    language: (language as string) || undefined,
     date_posted: (date_posted as string) || undefined,
-    work_from_home: work_from_home === "true" || undefined,
-    employment_types: (employment_types as string) || undefined,
+    work_from_home: work_from_home === "true"
+      ? true
+      : (work_from_home === undefined && profile?.remotePreferred)
+        ? true
+        : undefined,
+    employment_types: (employment_types as string)
+      || (profile?.roleTypes?.length ? profile.roleTypes.join(",") : undefined),
+    job_requirements: (job_requirements as string) || undefined,
+    radius: radius ? parseInt(radius as string) : (profile?.locationRadius ?? undefined),
+    exclude_job_publishers: (exclude_job_publishers as string)
+      || (profile?.excludePublishers?.length ? profile.excludePublishers.join(",") : undefined),
   };
 
   let results;
@@ -216,6 +239,7 @@ jobsRouter.get("/search", async (req, res) => {
       if (job) {
         localJobs.push({
           ...job,
+          score: profile ? scoreJob(job, profile) : 0,
           savedStatus: job.savedJobs[0]?.status ?? null,
           savedId: job.savedJobs[0]?.id ?? null,
         });
@@ -230,4 +254,89 @@ jobsRouter.get("/search", async (req, res) => {
   console.log(`[Search] Responding with ${localJobs.length} jobs`);
 
   res.json({ jobs: localJobs, total: localJobs.length });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/jobs/all — paginated view of all discovered jobs with scores
+// ---------------------------------------------------------------------------
+jobsRouter.get("/all", async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
+  const offset = (page - 1) * limit;
+  const sort = (req.query.sort as string) || "discoveredAt";
+  const order = (req.query.order as string) === "asc" ? "asc" : "desc";
+  const search = req.query.search as string | undefined;
+  const remote = req.query.remote as string | undefined;
+  const employmentType = req.query.employmentType as string | undefined;
+  const minSalary = req.query.minSalary ? parseFloat(req.query.minSalary as string) : undefined;
+  const maxSalary = req.query.maxSalary ? parseFloat(req.query.maxSalary as string) : undefined;
+  const countryFilter = req.query.country as string | undefined;
+
+  // Build where clause
+  const where: Prisma.JobWhereInput = { ignored: false };
+
+  if (search) {
+    where.OR = [
+      { title: { contains: search, mode: "insensitive" } },
+      { company: { contains: search, mode: "insensitive" } },
+    ];
+  }
+  if (remote === "true") {
+    where.isRemote = true;
+  }
+  if (employmentType) {
+    where.employmentType = employmentType;
+  }
+  if (minSalary !== undefined) {
+    where.salaryMin = { gte: minSalary };
+  }
+  if (maxSalary !== undefined) {
+    where.salaryMax = { lte: maxSalary };
+  }
+  if (countryFilter) {
+    where.country = { equals: countryFilter, mode: "insensitive" };
+  }
+
+  // For score sorting we need to score in-memory
+  const sortByScore = sort === "score";
+
+  const validSortColumns = ["discoveredAt", "title", "company", "salaryMin", "postedAt"];
+  const orderBy: Record<string, string> = {};
+  if (!sortByScore && validSortColumns.includes(sort)) {
+    orderBy[sort] = order;
+  } else if (!sortByScore) {
+    orderBy.discoveredAt = order;
+  }
+
+  const [total, jobs] = await Promise.all([
+    prisma.job.count({ where }),
+    prisma.job.findMany({
+      where,
+      orderBy: sortByScore ? { discoveredAt: "desc" } : orderBy,
+      skip: sortByScore ? 0 : offset,
+      take: sortByScore ? 500 : limit, // fetch more for score sorting
+      include: { savedJobs: true },
+    }),
+  ]);
+
+  const profile = await prisma.profile.findFirst();
+
+  let scored = jobs.map((job) => ({
+    ...job,
+    score: profile ? scoreJob(job, profile) : 0,
+    savedStatus: job.savedJobs[0]?.status ?? null,
+    savedId: job.savedJobs[0]?.id ?? null,
+  }));
+
+  if (sortByScore) {
+    scored.sort((a, b) => order === "asc" ? a.score - b.score : b.score - a.score);
+    scored = scored.slice(offset, offset + limit);
+  }
+
+  res.json({
+    jobs: scored,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  });
 });

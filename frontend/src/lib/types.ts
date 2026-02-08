@@ -39,12 +39,39 @@ export interface Job {
 
 export interface Profile {
   id: number;
+  // Core targeting
   targetTitles: string[];
   skills: string[];
   preferredLocations: string[];
   remotePreferred: boolean;
   citizenshipNotRequired: boolean;
   workAuthorization: string;
+  // Role preferences
+  seniority: string;
+  yearsOfExperience: number | null;
+  roleTypes: string[];
+  workModePreference: string;
+  // Compensation
+  minSalary: number | null;
+  maxSalary: number | null;
+  // Skills depth
+  primarySkills: string[];
+  secondarySkills: string[];
+  // Education
+  education: string;
+  degrees: string[];
+  // Industry & company
+  industries: string[];
+  companySizePreference: string;
+  companyTypes: string[];
+  // Location
+  locationRadius: number | null;
+  timezonePreference: string;
+  // Search/Recommendation settings
+  searchNumPages: number;
+  recommendedNumPages: number;
+  recommendedDatePosted: string;
+  excludePublishers: string[];
   updatedAt: string;
 }
 

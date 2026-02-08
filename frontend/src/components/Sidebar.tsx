@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/jobs/recommended", label: "Recommended", icon: "⚡" },
   { href: "/jobs/saved", label: "Saved", icon: "📌" },
   { href: "/jobs/search", label: "Search", icon: "🔍" },
+  { href: "/jobs/all", label: "All Jobs", icon: "📋" },
   { href: "/profile", label: "Profile", icon: "👤" },
 ];
 

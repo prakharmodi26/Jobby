@@ -2,6 +2,13 @@ import { prisma } from "../prisma.js";
 import { searchJobs } from "./jsearch.js";
 import { upsertJob } from "./jobUpsert.js";
 import { scoreJob } from "./scoring.js";
+import type { JSearchParams } from "./jsearch.js";
+
+function mapYearsToRequirement(years: number | null): string | undefined {
+  if (years === null || years === undefined) return undefined;
+  if (years < 3) return "under_3_years_experience";
+  return "more_than_3_years_experience";
+}
 
 export async function runRecommendedPull() {
   const profile = await prisma.profile.findFirst();
@@ -16,6 +23,10 @@ export async function runRecommendedPull() {
         targetTitles: profile.targetTitles,
         locations: profile.preferredLocations,
         remote: profile.remotePreferred,
+        seniority: profile.seniority,
+        primarySkills: profile.primarySkills,
+        numPages: profile.recommendedNumPages,
+        datePosted: profile.recommendedDatePosted,
       }),
     },
   });
@@ -25,30 +36,59 @@ export async function runRecommendedPull() {
   let duplicates = 0;
   const jobIdsThisRun: number[] = [];
 
+  // Shared params from profile settings
+  const sharedParams: Partial<JSearchParams> = {
+    num_pages: profile.recommendedNumPages || 3,
+    date_posted: profile.recommendedDatePosted || "week",
+    employment_types: profile.roleTypes.length > 0 ? profile.roleTypes.join(",") : undefined,
+    job_requirements: mapYearsToRequirement(profile.yearsOfExperience),
+    radius: profile.locationRadius ?? undefined,
+    exclude_job_publishers: profile.excludePublishers.length > 0
+      ? profile.excludePublishers.join(",")
+      : undefined,
+  };
+
+  const seniorityPrefix = profile.seniority && profile.seniority !== "mid"
+    ? `${profile.seniority} `
+    : "";
+
   try {
-    // Build queries: one per title, combined with each location
     const queries: { query: string; work_from_home?: boolean }[] = [];
+
     for (const title of profile.targetTitles) {
+      const prefixedTitle = `${seniorityPrefix}${title}`;
+
+      // Title + location combinations
       if (profile.preferredLocations.length > 0) {
         for (const loc of profile.preferredLocations) {
-          queries.push({ query: `${title} in ${loc}` });
+          queries.push({ query: `${prefixedTitle} in ${loc}` });
         }
       } else {
-        queries.push({ query: title });
+        queries.push({ query: prefixedTitle });
       }
-      // Also add a remote query if preferred
-      if (profile.remotePreferred) {
-        queries.push({ query: `${title} remote`, work_from_home: true });
+
+      // Remote query if preferred
+      if (profile.remotePreferred || profile.workModePreference === "remote") {
+        queries.push({ query: `${prefixedTitle} remote`, work_from_home: true });
       }
     }
+
+    // Skill-based queries for top 2 primary skills
+    const topSkills = profile.primarySkills.slice(0, 2);
+    for (const skill of topSkills) {
+      for (const title of profile.targetTitles) {
+        queries.push({ query: `${skill} ${title}` });
+      }
+    }
+
+    console.log(`[RecommendedPull] Running ${queries.length} queries with num_pages=${sharedParams.num_pages}`);
 
     for (const q of queries) {
       try {
         const response = await searchJobs({
           query: q.query,
-          num_pages: 1,
-          date_posted: "week",
-          work_from_home: q.work_from_home,
+          ...sharedParams,
+          work_from_home: q.work_from_home || undefined,
         });
 
         for (const apiJob of response.data) {
@@ -65,9 +105,10 @@ export async function runRecommendedPull() {
         }
       } catch (err) {
         console.error(`[RecommendedPull] Query "${q.query}" failed:`, err);
-        // Continue with other queries
       }
     }
+
+    console.log(`[RecommendedPull] Fetched ${totalFetched} jobs (${newJobs} new, ${duplicates} dupes), scoring ${jobIdsThisRun.length} unique`);
 
     // Score all discovered jobs
     const jobs = await prisma.job.findMany({
@@ -79,10 +120,8 @@ export async function runRecommendedPull() {
       score: scoreJob(job, profile),
     }));
 
-    // Sort by score descending, assign ranks
     scored.sort((a, b) => b.score - a.score);
 
-    // Create RecommendedMatch records
     if (scored.length > 0) {
       await prisma.recommendedMatch.createMany({
         data: scored.map((s, idx) => ({
@@ -95,7 +134,6 @@ export async function runRecommendedPull() {
       });
     }
 
-    // Finalize the run
     const completedRun = await prisma.recommendedRun.update({
       where: { id: run.id },
       data: {

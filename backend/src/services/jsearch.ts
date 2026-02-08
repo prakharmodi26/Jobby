@@ -6,6 +6,7 @@ export interface JSearchParams {
   page?: number;
   num_pages?: number;
   country?: string;
+  language?: string;
   date_posted?: string;
   work_from_home?: boolean;
   employment_types?: string;
@@ -66,6 +67,7 @@ export async function searchJobs(
   if (params.num_pages)
     url.searchParams.set("num_pages", String(params.num_pages));
   if (params.country) url.searchParams.set("country", params.country);
+  if (params.language) url.searchParams.set("language", params.language);
   if (params.date_posted)
     url.searchParams.set("date_posted", params.date_posted);
   if (params.work_from_home)

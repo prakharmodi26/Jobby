@@ -12,30 +12,38 @@ profileRouter.get("/", async (_req, res) => {
 });
 
 profileRouter.put("/", async (req, res) => {
-  const {
-    targetTitles,
-    skills,
-    preferredLocations,
-    remotePreferred,
-    citizenshipNotRequired,
-    workAuthorization,
-  } = req.body;
-
   let profile = await prisma.profile.findFirst();
   if (!profile) {
     profile = await prisma.profile.create({ data: {} });
   }
 
   const data: Record<string, unknown> = {};
-  if (targetTitles !== undefined) data.targetTitles = targetTitles;
-  if (skills !== undefined) data.skills = skills;
-  if (preferredLocations !== undefined)
-    data.preferredLocations = preferredLocations;
-  if (remotePreferred !== undefined) data.remotePreferred = remotePreferred;
-  if (citizenshipNotRequired !== undefined)
-    data.citizenshipNotRequired = citizenshipNotRequired;
-  if (workAuthorization !== undefined)
-    data.workAuthorization = workAuthorization;
+  const fields = [
+    // Core targeting
+    "targetTitles", "skills", "preferredLocations",
+    "remotePreferred", "citizenshipNotRequired", "workAuthorization",
+    // Role preferences
+    "seniority", "yearsOfExperience", "roleTypes", "workModePreference",
+    // Compensation
+    "minSalary", "maxSalary",
+    // Skills depth
+    "primarySkills", "secondarySkills",
+    // Education
+    "education", "degrees",
+    // Industry & company
+    "industries", "companySizePreference", "companyTypes",
+    // Location
+    "locationRadius", "timezonePreference",
+    // Search/Recommendation settings
+    "searchNumPages", "recommendedNumPages", "recommendedDatePosted",
+    "excludePublishers",
+  ];
+
+  for (const field of fields) {
+    if (req.body[field] !== undefined) {
+      data[field] = req.body[field];
+    }
+  }
 
   const updated = await prisma.profile.update({
     where: { id: profile.id },
