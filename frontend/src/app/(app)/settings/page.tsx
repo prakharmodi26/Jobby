@@ -188,8 +188,13 @@ const COVER_LETTER_MODELS = [
   },
   {
     value: "gemini",
-    label: "Google Gemma 3 12B",
+    label: "Google Gemma 3 — Gemma 3 12B",
     description: "Requires GOOGLE_API_KEY",
+  },
+  {
+    value: "gemma3-12b",
+    label: "Gemma 3 12B Instruct",
+    description: "Requires GOOGLE_API_KEY (same API, explicit model choice)",
   },
 ];
 
@@ -224,6 +229,13 @@ export default function SettingsPage() {
 
   // Cover letter model
   const [coverLetterModel, setCoverLetterModel] = useState("vt-arc");
+
+  // OpenRouter
+  const [openRouterModels, setOpenRouterModels] = useState<
+    { id: string; name: string; context_length: number | null }[]
+  >([]);
+  const [openRouterLoading, setOpenRouterLoading] = useState(false);
+  const [openRouterSearch, setOpenRouterSearch] = useState("");
 
   // Scoring weights
   const [weightSkillMatch, setWeightSkillMatch] = useState(10);
@@ -319,6 +331,24 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const fetchOpenRouterModels = useCallback(async () => {
+    setOpenRouterLoading(true);
+    try {
+      const data = await apiFetch<{
+        models: { id: string; name: string; context_length: number | null }[];
+      }>("/api/openrouter/models");
+      setOpenRouterModels(data.models);
+    } catch (err) {
+      console.error("Failed to fetch OpenRouter models:", err);
+    } finally {
+      setOpenRouterLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOpenRouterModels();
+  }, [fetchOpenRouterModels]);
 
   /* ---------- account handlers ---------- */
 
@@ -626,6 +656,7 @@ export default function SettingsPage() {
             Select the AI model used for generating cover letters.
           </p>
 
+          {/* Built-in models */}
           <div className="space-y-3">
             {COVER_LETTER_MODELS.map((model) => (
               <label
@@ -655,6 +686,72 @@ export default function SettingsPage() {
                 </div>
               </label>
             ))}
+
+            {/* OpenRouter section */}
+            <label
+              className={cn(
+                "flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-colors",
+                coverLetterModel.startsWith("openrouter:")
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-200 hover:border-gray-300"
+              )}
+            >
+              <input
+                type="radio"
+                name="coverLetterModel"
+                value="openrouter"
+                checked={coverLetterModel.startsWith("openrouter:")}
+                onChange={() => {
+                  if (!coverLetterModel.startsWith("openrouter:") && openRouterModels.length > 0) {
+                    setCoverLetterModel(`openrouter:${openRouterModels[0].id}`);
+                  }
+                }}
+                className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 mt-0.5"
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium text-gray-900">
+                  OpenRouter — Free Models
+                </span>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Requires OPENROUTER_API_KEY. Access hundreds of free AI models.
+                </p>
+
+                {coverLetterModel.startsWith("openrouter:") && (
+                  <div className="mt-3">
+                    <input
+                      type="text"
+                      value={openRouterSearch}
+                      onChange={(e) => setOpenRouterSearch(e.target.value)}
+                      placeholder="Search models..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow mb-2"
+                    />
+                    {openRouterLoading ? (
+                      <div className="flex items-center gap-2 py-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                        <span className="text-xs text-gray-500">Loading models...</span>
+                      </div>
+                    ) : (
+                      <select
+                        value={coverLetterModel.replace("openrouter:", "")}
+                        onChange={(e) => setCoverLetterModel(`openrouter:${e.target.value}`)}
+                        className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {openRouterModels
+                          .filter((m) =>
+                            m.name.toLowerCase().includes(openRouterSearch.toLowerCase()) ||
+                            m.id.toLowerCase().includes(openRouterSearch.toLowerCase())
+                          )
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name} ({m.id})
+                            </option>
+                          ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </div>
+            </label>
           </div>
         </Section>
 
