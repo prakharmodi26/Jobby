@@ -16,6 +16,7 @@ import { adminRouter } from "./routes/admin.js";
 import { settingsRouter } from "./routes/settings.js";
 import { coverLetterRouter } from "./routes/coverLetter.js";
 import { openrouterRouter } from "./routes/openrouter.js";
+import { profileAIRouter } from "./routes/profileAI.js";
 import { startScheduler } from "./scheduler/cron.js";
 
 const app = express();
@@ -55,6 +56,7 @@ app.use("/api/admin", authMiddleware, adminRouter);
 app.use("/api/settings", authMiddleware, settingsRouter);
 app.use("/api/cover-letter", authMiddleware, coverLetterRouter);
 app.use("/api/openrouter", authMiddleware, openrouterRouter);
+app.use("/api/profile", authMiddleware, profileAIRouter);
 
 // Health check
 app.get("/health", (_req, res) => {
