@@ -30,7 +30,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://jobs.prakharmodi.me
+        NEXT_PUBLIC_API_URL: https://jobs.prakharmodi.me/api
     environment:
       HOSTNAME: "0.0.0.0"
     depends_on:
