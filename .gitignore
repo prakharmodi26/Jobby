@@ -6,3 +6,9 @@ dist/
 .DS_Store
 coverage/
 .turbo/
+PLAN.md
+openapi.json
+.claude/
+.github/
+.playwright-mcp/
+.vscode/
