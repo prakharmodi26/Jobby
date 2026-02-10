@@ -16,6 +16,22 @@ interface RunStatus {
   errorMessage?: string;
 }
 
+type SortOption = "rank" | "score" | "postedAt" | "discoveredAt";
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "rank", label: "Best Match" },
+  { value: "score", label: "Score" },
+  { value: "postedAt", label: "Date Posted" },
+  { value: "discoveredAt", label: "Date Discovered" },
+];
+
+const EMPLOYMENT_TYPE_OPTIONS = [
+  { value: "Full-time", label: "Full-time" },
+  { value: "Part-time", label: "Part-time" },
+  { value: "Contractor", label: "Contract" },
+  { value: "Internship", label: "Intern" },
+];
+
 export default function RecommendedPage() {
   const [data, setData] = useState<PaginatedResponse<Job> | null>(null);
   const [page, setPage] = useState(1);
@@ -25,11 +41,29 @@ export default function RecommendedPage() {
   const [pullError, setPullError] = useState<string | null>(null);
   const wasPullingRef = useRef(false);
 
+  // Filters & sorting
+  const [search, setSearch] = useState("");
+  const [remoteOnly, setRemoteOnly] = useState(false);
+  const [employmentTypeFilter, setEmploymentTypeFilter] = useState<string[]>([]);
+  const [sort, setSort] = useState<SortOption>("rank");
+  const [order, setOrder] = useState<"asc" | "desc">("desc");
+
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: "20",
+        sort,
+        order: sort === "rank" ? "asc" : order,
+      });
+      if (search.trim()) params.set("search", search.trim());
+      if (remoteOnly) params.set("remote", "true");
+      if (employmentTypeFilter.length > 0)
+        params.set("employmentType", employmentTypeFilter.join(","));
+
       const res = await apiFetch<PaginatedResponse<Job>>(
-        `/api/jobs/recommended?page=${page}&limit=20`
+        `/api/jobs/recommended?${params}`
       );
       setData(res);
     } catch (err) {
@@ -37,7 +71,7 @@ export default function RecommendedPage() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, sort, order, search, remoteOnly, employmentTypeFilter]);
 
   const checkRunStatus = useCallback(async () => {
     try {
@@ -45,7 +79,6 @@ export default function RecommendedPage() {
       const isRunning = status.status === "running";
       setPulling(isRunning);
 
-      // If we were pulling and now it's done, refresh the jobs list
       if (wasPullingRef.current && !isRunning) {
         fetchJobs();
       }
@@ -59,12 +92,10 @@ export default function RecommendedPage() {
     fetchJobs();
   }, [fetchJobs]);
 
-  // Check status on mount to detect already-running pulls
   useEffect(() => {
     checkRunStatus();
   }, [checkRunStatus]);
 
-  // Poll while pulling
   useEffect(() => {
     if (!pulling) return;
     const interval = setInterval(checkRunStatus, 3000);
@@ -138,26 +169,154 @@ export default function RecommendedPage() {
   }
 
   if (!data || data.jobs.length === 0) {
+    // Show filters + empty state so user can clear filters or pull
+    const hasFilters = search || remoteOnly || employmentTypeFilter.length > 0;
     return (
-      <div className="text-center py-16">
-        <p className="text-gray-500 text-lg">No recommended jobs yet</p>
-        <p className="text-gray-400 text-sm mt-1">
-          Set up your profile and pull recommended jobs to get started
-        </p>
-        <div className="mt-4">{pullButton}</div>
-        {pullError && (
-          <p className="text-red-500 text-sm mt-2">{pullError}</p>
-        )}
+      <div>
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Filter by title or company..."
+            className="flex-1 min-w-[200px] px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="button"
+            onClick={() => { setRemoteOnly(!remoteOnly); setPage(1); }}
+            className={cn(
+              "text-sm px-3 py-2 rounded-lg border transition-colors",
+              remoteOnly
+                ? "bg-green-50 text-green-700 border-green-300"
+                : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+            )}
+          >
+            Remote only
+          </button>
+          {EMPLOYMENT_TYPE_OPTIONS.map((type) => (
+            <button
+              key={type.value}
+              type="button"
+              onClick={() => {
+                setEmploymentTypeFilter((prev) =>
+                  prev.includes(type.value)
+                    ? prev.filter((v) => v !== type.value)
+                    : [...prev, type.value]
+                );
+                setPage(1);
+              }}
+              className={cn(
+                "text-sm px-3 py-2 rounded-lg border transition-colors",
+                employmentTypeFilter.includes(type.value)
+                  ? "bg-blue-50 text-blue-700 border-blue-300"
+                  : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+              )}
+            >
+              {type.label}
+            </button>
+          ))}
+          {pullButton}
+        </div>
+
+        <div className="text-center py-16">
+          <p className="text-gray-500 text-lg">
+            {hasFilters ? "No jobs match your filters" : "No recommended jobs yet"}
+          </p>
+          <p className="text-gray-400 text-sm mt-1">
+            {hasFilters
+              ? "Try adjusting your filters"
+              : "Set up your profile and pull recommended jobs to get started"}
+          </p>
+          {pullError && (
+            <p className="text-red-500 text-sm mt-2">{pullError}</p>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
     <div>
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Filter by title or company..."
+          className="flex-1 min-w-[200px] px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          type="button"
+          onClick={() => { setRemoteOnly(!remoteOnly); setPage(1); }}
+          className={cn(
+            "text-sm px-3 py-2 rounded-lg border transition-colors",
+            remoteOnly
+              ? "bg-green-50 text-green-700 border-green-300"
+              : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+          )}
+        >
+          Remote only
+        </button>
+        {EMPLOYMENT_TYPE_OPTIONS.map((type) => (
+          <button
+            key={type.value}
+            type="button"
+            onClick={() => {
+              setEmploymentTypeFilter((prev) =>
+                prev.includes(type.value)
+                  ? prev.filter((v) => v !== type.value)
+                  : [...prev, type.value]
+              );
+              setPage(1);
+            }}
+            className={cn(
+              "text-sm px-3 py-2 rounded-lg border transition-colors",
+              employmentTypeFilter.includes(type.value)
+                ? "bg-blue-50 text-blue-700 border-blue-300"
+                : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+            )}
+          >
+            {type.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Sort bar + pull button */}
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-gray-500">
-          {data.total} recommended job{data.total !== 1 ? "s" : ""}
-        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">
+            {data.total} job{data.total !== 1 ? "s" : ""}
+          </span>
+          <span className="text-gray-300">|</span>
+          <span className="text-xs text-gray-400">Sort:</span>
+          {SORT_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                if (sort === opt.value && opt.value !== "rank") {
+                  setOrder((o) => (o === "desc" ? "asc" : "desc"));
+                } else {
+                  setSort(opt.value);
+                  setOrder("desc");
+                }
+                setPage(1);
+              }}
+              className={cn(
+                "text-xs px-2.5 py-1 rounded-md border transition-colors",
+                sort === opt.value
+                  ? "bg-blue-50 text-blue-700 border-blue-300"
+                  : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+              )}
+            >
+              {opt.label}
+              {sort === opt.value && opt.value !== "rank" && (
+                <span className="ml-1">{order === "desc" ? "\u2193" : "\u2191"}</span>
+              )}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-2">
           {pullError && (
             <p className="text-red-500 text-sm">{pullError}</p>

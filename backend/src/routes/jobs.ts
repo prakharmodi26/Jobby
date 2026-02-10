@@ -13,6 +13,13 @@ jobsRouter.get("/recommended", async (req, res) => {
   const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
   const offset = (page - 1) * limit;
 
+  // Sort/filter params
+  const sort = (req.query.sort as string) || "rank";
+  const order = (req.query.order as string) === "asc" ? "asc" : "desc";
+  const search = (req.query.search as string) || "";
+  const remote = req.query.remote === "true";
+  const employmentType = (req.query.employmentType as string) || "";
+
   const latestRun = await prisma.recommendedRun.findFirst({
     orderBy: { runAt: "desc" },
     where: { status: "completed" },
@@ -23,12 +30,36 @@ jobsRouter.get("/recommended", async (req, res) => {
     return;
   }
 
-  const where = { runId: latestRun.id, job: { ignored: false } };
+  // Build job-level filters
+  const jobFilter: Record<string, unknown> = { ignored: false };
+  if (search) {
+    jobFilter.OR = [
+      { title: { contains: search, mode: "insensitive" } },
+      { company: { contains: search, mode: "insensitive" } },
+    ];
+  }
+  if (remote) {
+    jobFilter.isRemote = true;
+  }
+  if (employmentType) {
+    jobFilter.employmentType = { in: employmentType.split(",") };
+  }
+
+  const where = { runId: latestRun.id, job: jobFilter };
+
+  // Build orderBy — sort on match fields or nested job fields
+  let orderBy: Record<string, unknown>;
+  if (sort === "rank" || sort === "score") {
+    orderBy = { [sort]: sort === "rank" ? "asc" : order };
+  } else {
+    // Sort on job fields: postedAt, discoveredAt, title, company
+    orderBy = { job: { [sort]: order } };
+  }
 
   const [matches, total] = await Promise.all([
     prisma.recommendedMatch.findMany({
       where,
-      orderBy: { rank: "asc" },
+      orderBy,
       skip: offset,
       take: limit,
       include: {
