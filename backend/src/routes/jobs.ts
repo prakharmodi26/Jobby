@@ -134,7 +134,8 @@ jobsRouter.get("/recommended", async (req, res) => {
 
 // POST /api/jobs/:id/save
 jobsRouter.post("/:id/save", async (req, res) => {
-  const jobId = parseInt(req.params.id);
+  const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const jobId = parseInt(idParam);
   const { status } = req.body;
 
   const updateData: Record<string, unknown> = {};
@@ -164,8 +165,9 @@ jobsRouter.post("/:id/save", async (req, res) => {
 
 // POST /api/jobs/:id/ignore
 jobsRouter.post("/:id/ignore", async (req, res) => {
+  const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   await prisma.job.update({
-    where: { id: parseInt(req.params.id) },
+    where: { id: parseInt(idParam) },
     data: { ignored: true },
   });
   res.json({ success: true });
@@ -173,8 +175,9 @@ jobsRouter.post("/:id/ignore", async (req, res) => {
 
 // DELETE /api/jobs/:id/ignore
 jobsRouter.delete("/:id/ignore", async (req, res) => {
+  const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   await prisma.job.update({
-    where: { id: parseInt(req.params.id) },
+    where: { id: parseInt(idParam) },
     data: { ignored: false },
   });
   res.json({ success: true });
@@ -227,9 +230,10 @@ jobsRouter.patch("/saved/:id", async (req, res) => {
     data.appliedAt = appliedAt ? new Date(appliedAt) : null;
   }
   // Auto-set appliedAt when moving to a non-saved status
+  const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   if (status && status !== "saved" && appliedAt === undefined) {
     const existing = await prisma.savedJob.findUnique({
-      where: { id: parseInt(req.params.id) },
+      where: { id: parseInt(idParam) },
     });
     if (existing && !existing.appliedAt) {
       data.appliedAt = new Date();
@@ -237,7 +241,7 @@ jobsRouter.patch("/saved/:id", async (req, res) => {
   }
 
   const updated = await prisma.savedJob.update({
-    where: { id: parseInt(req.params.id) },
+    where: { id: parseInt(idParam) },
     data,
     include: { job: true },
   });
@@ -247,8 +251,9 @@ jobsRouter.patch("/saved/:id", async (req, res) => {
 
 // DELETE /api/jobs/saved/:id
 jobsRouter.delete("/saved/:id", async (req, res) => {
+  const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   await prisma.savedJob.delete({
-    where: { id: parseInt(req.params.id) },
+    where: { id: parseInt(idParam) },
   });
   res.json({ success: true });
 });
