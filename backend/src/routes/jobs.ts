@@ -135,7 +135,7 @@ jobsRouter.get("/recommended", async (req, res) => {
 
 // POST /api/jobs/:id/save
 jobsRouter.post("/:id/save", demoGuard, async (req, res) => {
-  const jobId = parseInt(req.params.id);
+  const jobId = parseInt(req.params.id as string);
   const { status } = req.body;
 
   const updateData: Record<string, unknown> = {};
@@ -166,7 +166,7 @@ jobsRouter.post("/:id/save", demoGuard, async (req, res) => {
 // POST /api/jobs/:id/ignore
 jobsRouter.post("/:id/ignore", demoGuard, async (req, res) => {
   await prisma.job.update({
-    where: { id: parseInt(req.params.id) },
+    where: { id: parseInt(req.params.id as string) },
     data: { ignored: true },
   });
   res.json({ success: true });
@@ -175,7 +175,7 @@ jobsRouter.post("/:id/ignore", demoGuard, async (req, res) => {
 // DELETE /api/jobs/:id/ignore
 jobsRouter.delete("/:id/ignore", demoGuard, async (req, res) => {
   await prisma.job.update({
-    where: { id: parseInt(req.params.id) },
+    where: { id: parseInt(req.params.id as string) },
     data: { ignored: false },
   });
   res.json({ success: true });
@@ -230,7 +230,7 @@ jobsRouter.patch("/saved/:id", demoGuard, async (req, res) => {
   // Auto-set appliedAt when moving to a non-saved status
   if (status && status !== "saved" && appliedAt === undefined) {
     const existing = await prisma.savedJob.findUnique({
-      where: { id: parseInt(req.params.id) },
+      where: { id: parseInt(req.params.id as string) },
     });
     if (existing && !existing.appliedAt) {
       data.appliedAt = new Date();
@@ -238,7 +238,7 @@ jobsRouter.patch("/saved/:id", demoGuard, async (req, res) => {
   }
 
   const updated = await prisma.savedJob.update({
-    where: { id: parseInt(req.params.id) },
+    where: { id: parseInt(req.params.id as string) },
     data,
     include: { job: true },
   });
@@ -249,7 +249,7 @@ jobsRouter.patch("/saved/:id", demoGuard, async (req, res) => {
 // DELETE /api/jobs/saved/:id
 jobsRouter.delete("/saved/:id", demoGuard, async (req, res) => {
   await prisma.savedJob.delete({
-    where: { id: parseInt(req.params.id) },
+    where: { id: parseInt(req.params.id as string) },
   });
   res.json({ success: true });
 });
