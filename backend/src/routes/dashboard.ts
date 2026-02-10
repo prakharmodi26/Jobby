@@ -54,6 +54,25 @@ dashboardRouter.get("/stats", async (_req, res) => {
       })
     : 0;
 
+  // Check for recent quota errors (failed runs with 429/quota messages)
+  const latestFailedRun = await prisma.recommendedRun.findFirst({
+    orderBy: { runAt: "desc" },
+    where: {
+      status: "failed",
+      errorMessage: { not: null },
+    },
+  });
+
+  const quotaExceeded =
+    latestFailedRun?.errorMessage?.includes("429") ||
+    latestFailedRun?.errorMessage?.toLowerCase().includes("exceeded") ||
+    false;
+
+  // Only show alert if the failed run is more recent than the last successful run
+  const showQuotaAlert =
+    quotaExceeded &&
+    (!recentRun || latestFailedRun!.runAt > recentRun.runAt);
+
   // Applied count
   const appliedCount = await prisma.savedJob.count({
     where: { status: { not: "saved" } },
@@ -73,6 +92,7 @@ dashboardRouter.get("/stats", async (_req, res) => {
     lastRunNewJobs: recentRun?.newJobs ?? 0,
     dailyDiscoveries,
     recentRuns,
+    quotaExceeded: showQuotaAlert,
   });
 });
 

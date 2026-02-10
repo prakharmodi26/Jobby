@@ -19,6 +19,8 @@ async function executeRecommendedPull(
   let totalFetched = 0;
   let newJobs = 0;
   let duplicates = 0;
+  let queryErrors = 0;
+  let lastErrorMessage = "";
   const jobIdsThisRun: number[] = [];
 
   // Shared params from settings + profile
@@ -88,6 +90,8 @@ async function executeRecommendedPull(
           }
         }
       } catch (err) {
+        queryErrors++;
+        lastErrorMessage = err instanceof Error ? err.message : String(err);
         console.error(`[RecommendedPull] Query "${q.query}" failed:`, err);
       }
     }
@@ -118,13 +122,17 @@ async function executeRecommendedPull(
       });
     }
 
+    // If every query failed (e.g. quota exceeded), mark as failed so previous results stay visible
+    const allFailed = totalFetched === 0 && queryErrors > 0 && queryErrors === queries.length;
+
     await prisma.recommendedRun.update({
       where: { id: run.id },
       data: {
         totalFetched,
         newJobs,
         duplicates,
-        status: "completed",
+        status: allFailed ? "failed" : "completed",
+        errorMessage: allFailed ? lastErrorMessage : null,
       },
     });
 

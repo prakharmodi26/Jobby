@@ -112,6 +112,7 @@ export interface DashboardStats {
     totalFetched: number;
     duplicates: number;
   }[];
+  quotaExceeded?: boolean;
 }
 
 export interface PaginatedResponse<T> {

@@ -71,6 +71,23 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* Quota alert */}
+      {stats.quotaExceeded && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-start gap-3">
+          <span className="text-red-500 text-lg leading-none mt-0.5">⚠</span>
+          <div>
+            <p className="text-sm font-medium text-red-800">
+              JSearch API quota exceeded
+            </p>
+            <p className="text-sm text-red-600 mt-0.5">
+              Your monthly API request limit has been reached. New job pulls will
+              fail until the quota resets. Previous recommendations are still
+              visible.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Stats cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
