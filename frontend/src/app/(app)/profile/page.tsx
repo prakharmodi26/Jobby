@@ -161,13 +161,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [runResult, setRunResult] = useState<{
-    totalFetched: number;
-    newJobs: number;
-    duplicates: number;
-  } | null>(null);
-
   // Core targeting
   const [targetTitles, setTargetTitles] = useState<string[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
@@ -264,28 +257,6 @@ export default function ProfilePage() {
       console.error(err);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleRunRecommended = async () => {
-    setRunning(true);
-    setRunResult(null);
-    try {
-      const res = await apiFetch<{
-        success: boolean;
-        totalFetched: number;
-        newJobs: number;
-        duplicates: number;
-      }>("/api/admin/run-recommended", { method: "POST" });
-      setRunResult({
-        totalFetched: res.totalFetched,
-        newJobs: res.newJobs,
-        duplicates: res.duplicates,
-      });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setRunning(false);
     }
   };
 
@@ -585,40 +556,6 @@ export default function ProfilePage() {
             </span>
           )}
         </div>
-
-        {/* Run Recommended section */}
-        <Section title="Recommended Pull">
-          <p className="text-sm text-gray-500 -mt-2 mb-2">
-            Fetch new job listings based on your profile. Runs automatically
-            every 4 hours.
-          </p>
-
-          <button
-            onClick={handleRunRecommended}
-            disabled={running}
-            className={cn(
-              "px-6 py-2.5 text-sm font-medium rounded-xl transition-colors",
-              running
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-emerald-600 text-white hover:bg-emerald-700"
-            )}
-          >
-            {running ? "Running..." : "Run Recommended Now"}
-          </button>
-
-          {runResult && (
-            <div className="mt-4 bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-              <p className="text-sm font-medium text-emerald-800">
-                Pull complete
-              </p>
-              <div className="flex gap-4 mt-2 text-sm text-emerald-700">
-                <span>Fetched: {runResult.totalFetched}</span>
-                <span>New: {runResult.newJobs}</span>
-                <span>Duplicates: {runResult.duplicates}</span>
-              </div>
-            </div>
-          )}
-        </Section>
 
         {/* Last updated */}
         {profile?.updatedAt && (

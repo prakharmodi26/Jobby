@@ -3,7 +3,7 @@ import { searchJobs } from "./jsearch.js";
 import { upsertJob } from "./jobUpsert.js";
 import { scoreJob } from "./scoring.js";
 import type { JSearchParams } from "./jsearch.js";
-import type { Settings } from "@prisma/client";
+import type { Settings, Profile, RecommendedRun } from "@prisma/client";
 
 function mapYearsToRequirement(years: number | null): string | undefined {
   if (years === null || years === undefined) return undefined;
@@ -11,29 +11,11 @@ function mapYearsToRequirement(years: number | null): string | undefined {
   return "more_than_3_years_experience";
 }
 
-export async function runRecommendedPull() {
-  const profile = await prisma.profile.findFirst();
-  if (!profile || profile.targetTitles.length === 0) {
-    throw new Error("Profile not configured — set target titles first");
-  }
-
-  const settings = await prisma.settings.findFirst() as Settings | null;
-
-  const run = await prisma.recommendedRun.create({
-    data: {
-      status: "running",
-      paramsJson: JSON.stringify({
-        targetTitles: profile.targetTitles,
-        locations: profile.preferredLocations,
-        remote: profile.remotePreferred,
-        seniority: profile.seniority,
-        skills: profile.skills,
-        numPages: settings?.recommendedNumPages || 3,
-        datePosted: settings?.recommendedDatePosted || "week",
-      }),
-    },
-  });
-
+async function executeRecommendedPull(
+  run: RecommendedRun,
+  profile: Profile,
+  settings: Settings | null
+) {
   let totalFetched = 0;
   let newJobs = 0;
   let duplicates = 0;
@@ -136,7 +118,7 @@ export async function runRecommendedPull() {
       });
     }
 
-    const completedRun = await prisma.recommendedRun.update({
+    await prisma.recommendedRun.update({
       where: { id: run.id },
       data: {
         totalFetched,
@@ -146,7 +128,7 @@ export async function runRecommendedPull() {
       },
     });
 
-    return completedRun;
+    return { totalFetched, newJobs, duplicates };
   } catch (err) {
     await prisma.recommendedRun.update({
       where: { id: run.id },
@@ -154,4 +136,63 @@ export async function runRecommendedPull() {
     });
     throw err;
   }
+}
+
+export async function runRecommendedPull() {
+  const profile = await prisma.profile.findFirst();
+  if (!profile || profile.targetTitles.length === 0) {
+    throw new Error("Profile not configured — set target titles first");
+  }
+
+  const settings = await prisma.settings.findFirst() as Settings | null;
+
+  const run = await prisma.recommendedRun.create({
+    data: {
+      status: "running",
+      paramsJson: JSON.stringify({
+        targetTitles: profile.targetTitles,
+        locations: profile.preferredLocations,
+        remote: profile.remotePreferred,
+        seniority: profile.seniority,
+        skills: profile.skills,
+        numPages: settings?.recommendedNumPages || 3,
+        datePosted: settings?.recommendedDatePosted || "week",
+      }),
+    },
+  });
+
+  const result = await executeRecommendedPull(run, profile, settings);
+
+  return { id: run.id, ...result };
+}
+
+export async function startRecommendedPull(): Promise<number> {
+  const profile = await prisma.profile.findFirst();
+  if (!profile || profile.targetTitles.length === 0) {
+    throw new Error("Profile not configured — set target titles first");
+  }
+
+  const settings = await prisma.settings.findFirst() as Settings | null;
+
+  const run = await prisma.recommendedRun.create({
+    data: {
+      status: "running",
+      paramsJson: JSON.stringify({
+        targetTitles: profile.targetTitles,
+        locations: profile.preferredLocations,
+        remote: profile.remotePreferred,
+        seniority: profile.seniority,
+        skills: profile.skills,
+        numPages: settings?.recommendedNumPages || 3,
+        datePosted: settings?.recommendedDatePosted || "week",
+      }),
+    },
+  });
+
+  // Fire and forget — don't await
+  executeRecommendedPull(run, profile, settings).catch((err) => {
+    console.error("[RecommendedPull] Background pull failed:", err);
+  });
+
+  return run.id;
 }
