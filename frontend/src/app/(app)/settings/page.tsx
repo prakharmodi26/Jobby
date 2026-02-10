@@ -164,6 +164,7 @@ const DEFAULTS: Partial<Settings> = {
   weightExpUnder: -15,
   weightCitizenship: -50,
   weightOptCptBoost: 20,
+  weightAvoidKeyword: -15,
 };
 
 const CRON_PRESETS = [
@@ -260,6 +261,7 @@ export default function SettingsPage() {
   const [weightExpUnder, setWeightExpUnder] = useState(-15);
   const [weightCitizenship, setWeightCitizenship] = useState(-50);
   const [weightOptCptBoost, setWeightOptCptBoost] = useState(20);
+  const [weightAvoidKeyword, setWeightAvoidKeyword] = useState(-15);
 
   /* ---------- helpers ---------- */
 
@@ -323,6 +325,7 @@ export default function SettingsPage() {
       setWeightExpUnder(settings.weightExpUnder);
       setWeightCitizenship(settings.weightCitizenship);
       setWeightOptCptBoost(settings.weightOptCptBoost);
+      setWeightAvoidKeyword(settings.weightAvoidKeyword ?? DEFAULTS.weightAvoidKeyword!);
     } catch (err) {
       console.error(err);
     } finally {
@@ -444,6 +447,7 @@ export default function SettingsPage() {
           weightExpUnder,
           weightCitizenship,
           weightOptCptBoost,
+          weightAvoidKeyword,
         }),
       });
       setCronSchedule(resolvedCron);
@@ -480,6 +484,7 @@ export default function SettingsPage() {
     setWeightExpUnder(DEFAULTS.weightExpUnder!);
     setWeightCitizenship(DEFAULTS.weightCitizenship!);
     setWeightOptCptBoost(DEFAULTS.weightOptCptBoost!);
+    setWeightAvoidKeyword(DEFAULTS.weightAvoidKeyword!);
   };
 
   /* ---------- render ---------- */
@@ -964,6 +969,11 @@ export default function SettingsPage() {
                 label="OPT/CPT/F1 boost"
                 value={weightOptCptBoost}
                 onChange={setWeightOptCptBoost}
+              />
+              <WeightInput
+                label="Avoid keyword penalty"
+                value={weightAvoidKeyword}
+                onChange={setWeightAvoidKeyword}
               />
             </WeightGroup>
           </div>

@@ -51,6 +51,21 @@ function countKeywordMatches(text: string, keyword: string, cap = 3): number {
   return Math.min(matches?.length ?? 0, cap);
 }
 
+function countAnyKeywordMatches(
+  text: string,
+  keywords: string[],
+  capPerKeyword = 3,
+  totalCap = 10
+): number {
+  let total = 0;
+  for (const kw of keywords) {
+    if (!kw.trim()) continue;
+    total += countKeywordMatches(text, kw, capPerKeyword);
+    if (total >= totalCap) return totalCap;
+  }
+  return total;
+}
+
 function extractYearsRequired(text: string): number | null {
   // Match patterns like "5+ years", "3-5 years", "minimum 5 years"
   const patterns = [
@@ -73,6 +88,15 @@ export function scoreJob(job: Job, profile: Profile, weights: Settings): number 
   let score = 0;
   const searchText = `${job.title} ${job.description}`.toLowerCase();
   const fullText = `${job.title} ${job.description}`;
+
+  // Include highlights/qualifications text for penalties (best-effort; highlights is Json)
+  const highlights = job.highlights as any;
+  const qualificationsText = Array.isArray(highlights?.Qualifications)
+    ? highlights.Qualifications.join(" \n ")
+    : typeof highlights?.Qualifications === "string"
+      ? highlights.Qualifications
+      : "";
+  const combinedAvoidText = `${searchText} ${qualificationsText.toLowerCase()}`;
 
   // --- Skill matching (flat, no primary/secondary distinction) ---
   for (const kw of profile.skills) {
@@ -205,6 +229,14 @@ export function scoreJob(job: Job, profile: Profile, weights: Settings): number 
   if (profile.citizenshipNotRequired) {
     if (OPT_CPT_PATTERNS.some((p) => p.test(fullText))) {
       score += weights.weightOptCptBoost;
+    }
+  }
+
+  // --- Avoid keywords penalty ---
+  if (profile.avoidKeywords.length > 0 && weights.weightAvoidKeyword !== 0) {
+    const matches = countAnyKeywordMatches(combinedAvoidText, profile.avoidKeywords);
+    if (matches > 0) {
+      score += matches * weights.weightAvoidKeyword;
     }
   }
 

@@ -168,6 +168,7 @@ export default function ProfilePage() {
   const [preferredLocations, setPreferredLocations] = useState<string[]>([]);
   const [remotePreferred, setRemotePreferred] = useState(false);
   const [citizenshipNotRequired, setCitizenshipNotRequired] = useState(true);
+  const [avoidKeywords, setAvoidKeywords] = useState<string[]>([]);
 
   // Role preferences
   const [seniority, setSeniority] = useState("");
@@ -202,6 +203,7 @@ export default function ProfilePage() {
       setPreferredLocations(p.preferredLocations);
       setRemotePreferred(p.remotePreferred);
       setCitizenshipNotRequired(p.citizenshipNotRequired);
+      setAvoidKeywords(p.avoidKeywords || []);
       setSeniority(p.seniority);
       setYearsOfExperience(p.yearsOfExperience != null ? String(p.yearsOfExperience) : "");
       setRoleTypes(p.roleTypes);
@@ -237,6 +239,7 @@ export default function ProfilePage() {
           preferredLocations,
           remotePreferred,
           citizenshipNotRequired,
+          avoidKeywords,
           seniority,
           yearsOfExperience: yearsOfExperience ? parseInt(yearsOfExperience) : null,
           roleTypes,
@@ -305,6 +308,13 @@ export default function ProfilePage() {
           placeholder="e.g. San Francisco, New York, Remote..."
           tags={preferredLocations}
           onChange={setPreferredLocations}
+        />
+
+        <TagInput
+          label="Keywords to Avoid"
+          placeholder="e.g. clearance, on-call, shift work..."
+          tags={avoidKeywords}
+          onChange={setAvoidKeywords}
         />
 
         {/* Toggles */}

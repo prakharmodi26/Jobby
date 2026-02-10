@@ -44,6 +44,9 @@ model Profile {
   companySizePreference   String   @default("")
   companyTypes            String[] @default([])
 
+  // Keywords to avoid in scoring
+  avoidKeywords           String[] @default([])
+
   // Cover letter profile (markdown)
   userMd                  String   @default("")
 
@@ -75,6 +78,9 @@ model Settings {
   weightExpUnder          Int      @default(-15)
   weightCitizenship       Int      @default(-50)
   weightOptCptBoost       Int      @default(20)
+
+  // Penalty for avoid-keyword matches
+  weightAvoidKeyword      Int      @default(-15)
 
   // Cron schedule (default: every 12 hours = 2x/day)
   cronSchedule            String   @default("0 */12 * * *")

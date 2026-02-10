@@ -45,6 +45,7 @@ export interface Profile {
   preferredLocations: string[];
   remotePreferred: boolean;
   citizenshipNotRequired: boolean;
+  avoidKeywords: string[];
   // Role preferences
   seniority: string;
   yearsOfExperience: number | null;
@@ -87,6 +88,7 @@ export interface Settings {
   weightExpUnder: number;
   weightCitizenship: number;
   weightOptCptBoost: number;
+  weightAvoidKeyword: number;
   cronSchedule: string;
   searchNumPages: number;
   recommendedNumPages: number;

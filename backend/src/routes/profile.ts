@@ -30,6 +30,8 @@ profileRouter.put("/", async (req, res) => {
     "education", "degrees",
     // Industry & company
     "industries", "companySizePreference", "companyTypes",
+    // Avoid keywords
+    "avoidKeywords",
     // Cover letter profile
     "userMd",
   ];
