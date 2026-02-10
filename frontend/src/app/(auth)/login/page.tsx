@@ -84,6 +84,22 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
+
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <p className="text-xs text-center text-gray-500 mb-2">
+            Try the demo account
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setUsername("demo");
+              setPassword("demo1234");
+            }}
+            className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            Fill demo credentials
+          </button>
+        </div>
       </div>
     </div>
   );

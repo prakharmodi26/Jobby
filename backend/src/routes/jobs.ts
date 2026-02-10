@@ -3,6 +3,7 @@ import { prisma } from "../prisma.js";
 import { searchJobs } from "../services/jsearch.js";
 import { upsertJob } from "../services/jobUpsert.js";
 import { scoreJob } from "../services/scoring.js";
+import { demoGuard } from "../middleware/demoGuard.js";
 import type { Prisma, Settings } from "@prisma/client";
 
 export const jobsRouter = Router();
@@ -133,7 +134,7 @@ jobsRouter.get("/recommended", async (req, res) => {
 });
 
 // POST /api/jobs/:id/save
-jobsRouter.post("/:id/save", async (req, res) => {
+jobsRouter.post("/:id/save", demoGuard, async (req, res) => {
   const jobId = parseInt(req.params.id);
   const { status } = req.body;
 
@@ -163,7 +164,7 @@ jobsRouter.post("/:id/save", async (req, res) => {
 });
 
 // POST /api/jobs/:id/ignore
-jobsRouter.post("/:id/ignore", async (req, res) => {
+jobsRouter.post("/:id/ignore", demoGuard, async (req, res) => {
   await prisma.job.update({
     where: { id: parseInt(req.params.id) },
     data: { ignored: true },
@@ -172,7 +173,7 @@ jobsRouter.post("/:id/ignore", async (req, res) => {
 });
 
 // DELETE /api/jobs/:id/ignore
-jobsRouter.delete("/:id/ignore", async (req, res) => {
+jobsRouter.delete("/:id/ignore", demoGuard, async (req, res) => {
   await prisma.job.update({
     where: { id: parseInt(req.params.id) },
     data: { ignored: false },
@@ -217,7 +218,7 @@ jobsRouter.get("/saved", async (req, res) => {
 });
 
 // PATCH /api/jobs/saved/:id
-jobsRouter.patch("/saved/:id", async (req, res) => {
+jobsRouter.patch("/saved/:id", demoGuard, async (req, res) => {
   const { status, notes, appliedAt } = req.body;
   const data: Record<string, unknown> = {};
 
@@ -246,7 +247,7 @@ jobsRouter.patch("/saved/:id", async (req, res) => {
 });
 
 // DELETE /api/jobs/saved/:id
-jobsRouter.delete("/saved/:id", async (req, res) => {
+jobsRouter.delete("/saved/:id", demoGuard, async (req, res) => {
   await prisma.savedJob.delete({
     where: { id: parseInt(req.params.id) },
   });
@@ -256,7 +257,7 @@ jobsRouter.delete("/saved/:id", async (req, res) => {
 // ---------------------------------------------------------------------------
 // GET /api/jobs/search — proxy to JSearch, upsert results, return with scores
 // ---------------------------------------------------------------------------
-jobsRouter.get("/search", async (req, res) => {
+jobsRouter.get("/search", demoGuard, async (req, res) => {
   const {
     query,
     page,

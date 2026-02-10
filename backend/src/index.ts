@@ -8,6 +8,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { authMiddleware } from "./middleware/auth.js";
+import { demoGuard } from "./middleware/demoGuard.js";
 import { authRouter } from "./routes/auth.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { jobsRouter } from "./routes/jobs.js";
@@ -54,9 +55,9 @@ app.use("/api/jobs", authMiddleware, jobsRouter);
 app.use("/api/profile", authMiddleware, profileRouter);
 app.use("/api/admin", authMiddleware, adminRouter);
 app.use("/api/settings", authMiddleware, settingsRouter);
-app.use("/api/cover-letter", authMiddleware, coverLetterRouter);
-app.use("/api/openrouter", authMiddleware, openrouterRouter);
-app.use("/api/profile", authMiddleware, profileAIRouter);
+app.use("/api/cover-letter", authMiddleware, demoGuard, coverLetterRouter);
+app.use("/api/openrouter", authMiddleware, demoGuard, openrouterRouter);
+app.use("/api/profile", authMiddleware, demoGuard, profileAIRouter);
 
 // Health check
 app.get("/health", (_req, res) => {

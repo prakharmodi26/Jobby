@@ -6,6 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 export interface AuthPayload {
   userId: number;
   username: string;
+  isDemo: boolean;
 }
 
 declare global {
@@ -32,7 +33,8 @@ export function authMiddleware(
     // Handle old tokens with `email` instead of `username`
     const username = (decoded.username ?? decoded.email) as string;
     const userId = decoded.userId as number;
-    req.user = { userId, username };
+    const isDemo = (decoded.isDemo as boolean) ?? false;
+    req.user = { userId, username, isDemo };
     next();
   } catch {
     res.status(401).json({ error: "Invalid token" });

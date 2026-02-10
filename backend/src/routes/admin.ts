@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { startRecommendedPull } from "../services/recommendedRunner.js";
+import { demoGuard } from "../middleware/demoGuard.js";
 
 export const adminRouter = Router();
 
-adminRouter.post("/run-recommended", async (_req, res) => {
+adminRouter.post("/run-recommended", demoGuard, async (_req, res) => {
   try {
     // Check for an already-running pull (with 15-min staleness cutoff)
     const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);

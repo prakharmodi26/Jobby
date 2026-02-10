@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { prisma } from "../prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
+import { demoGuard } from "../middleware/demoGuard.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
@@ -28,7 +29,7 @@ authRouter.post("/login", async (req, res) => {
     return;
   }
 
-  const token = jwt.sign({ username: user.username, userId: user.id }, JWT_SECRET, {
+  const token = jwt.sign({ username: user.username, userId: user.id, isDemo: user.isDemo }, JWT_SECRET, {
     expiresIn: "7d",
   });
 
@@ -53,7 +54,7 @@ authRouter.get("/me", authMiddleware, (req, res) => {
 });
 
 // Change username
-authRouter.patch("/username", authMiddleware, async (req, res) => {
+authRouter.patch("/username", authMiddleware, demoGuard, async (req, res) => {
   const { username } = req.body;
   if (!username) {
     res.status(400).json({ error: "Username is required" });
@@ -91,7 +92,7 @@ authRouter.patch("/username", authMiddleware, async (req, res) => {
 });
 
 // Change password
-authRouter.patch("/password", authMiddleware, async (req, res) => {
+authRouter.patch("/password", authMiddleware, demoGuard, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   if (!currentPassword || !newPassword) {

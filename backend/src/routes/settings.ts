@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { restartScheduler } from "../scheduler/cron.js";
+import { demoGuard } from "../middleware/demoGuard.js";
 
 export const settingsRouter = Router();
 
@@ -12,7 +13,7 @@ settingsRouter.get("/", async (_req, res) => {
   res.json(settings);
 });
 
-settingsRouter.put("/", async (req, res) => {
+settingsRouter.put("/", demoGuard, async (req, res) => {
   let settings = await prisma.settings.findFirst();
   if (!settings) {
     settings = await prisma.settings.create({ data: {} });

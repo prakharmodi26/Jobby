@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
+import { demoGuard } from "../middleware/demoGuard.js";
 
 export const profileRouter = Router();
 
@@ -11,7 +12,7 @@ profileRouter.get("/", async (_req, res) => {
   res.json(profile);
 });
 
-profileRouter.put("/", async (req, res) => {
+profileRouter.put("/", demoGuard, async (req, res) => {
   let profile = await prisma.profile.findFirst();
   if (!profile) {
     profile = await prisma.profile.create({ data: {} });
