@@ -80,18 +80,7 @@ Edit `.env` and fill in the required values:
 
 > You need **at least one** AI API key (VT ARC, Gemini, or OpenRouter) if you want cover letter generation. Otherwise it's optional.
 
-### 3. Update the frontend build arg
-
-In `docker-compose.yml`, update the `NEXT_PUBLIC_API_URL` build arg for the frontend service to match your deployment URL:
-
-```yaml
-frontend:
-  build:
-    args:
-      NEXT_PUBLIC_API_URL: http://localhost:4000   # or your domain
-```
-
-### 4. Build and start
+### 3. Build and start
 
 ```bash
 docker compose up --build -d
@@ -102,7 +91,7 @@ This will:
 2. Build the backend, run Prisma migrations, seed the default user, and start the Express server
 3. Build and start the Next.js frontend
 
-### 5. Open the app
+### 4. Open the app
 
 Go to [http://localhost:3000](http://localhost:3000) and log in with the default credentials above.
 
@@ -212,4 +201,4 @@ The cover letter model can be switched between VT ARC, Google Gemini, and OpenRo
 
 ## 📄 License
 
-This is a personal project. Feel free to fork and adapt for your own use.
+MIT — see [LICENSE](LICENSE) for details.

@@ -6,9 +6,11 @@ dist/
 .DS_Store
 coverage/
 .turbo/
-PLAN.md
-openapi.json
 .claude/
-.github/
 .playwright-mcp/
 .vscode/
+*.tsbuildinfo
+PLAN.md
+openapi.json
+docs/plans/
+.github/
