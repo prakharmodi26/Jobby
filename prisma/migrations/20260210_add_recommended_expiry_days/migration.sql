@@ -1,0 +1,1 @@
+ALTER TABLE "Settings" ADD COLUMN "recommendedExpiryDays" INTEGER NOT NULL DEFAULT 5;
