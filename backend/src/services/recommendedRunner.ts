@@ -21,8 +21,9 @@ async function executeRecommendedPull(
   let duplicates = 0;
   let queryErrors = 0;
   let lastErrorMessage = "";
-  const jobIdsThisRun: number[] = [];
-  const minScore = settings?.minRecommendedScore ?? 50;
+const jobIdsThisRun: number[] = [];
+const minScore = settings?.minRecommendedScore ?? 50;
+const cancelledRuns = new Set<number>();
 
   async function upsertMatchesIncremental(jobIds: number[]) {
     if (jobIds.length === 0) return;
@@ -39,7 +40,7 @@ async function executeRecommendedPull(
       .filter((s) => s.score >= minScore)
       .sort((a, b) => b.score - a.score);
 
-    // Upsert scores/ranks so frontend can read while run is still executing
+    // Upsert scores so frontend can read while run is still executing
     await prisma.$transaction(
       scored.map((s, idx) =>
         prisma.recommendedMatch.upsert({
@@ -48,11 +49,9 @@ async function executeRecommendedPull(
             runId: run.id,
             jobId: s.jobId,
             score: s.score,
-            rank: idx + 1,
           },
           update: {
             score: s.score,
-            rank: idx + 1,
           },
         })
       )
@@ -106,6 +105,10 @@ async function executeRecommendedPull(
     console.log(`[RecommendedPull] Running ${queries.length} queries with num_pages=${sharedParams.num_pages}`);
 
     for (const q of queries) {
+      if (cancelledRuns.has(run.id)) {
+        console.log(`[RecommendedPull] Run ${run.id} cancelled; stopping remaining queries`);
+        break;
+      }
       try {
         const response = await searchJobs({
           query: q.query,
@@ -162,7 +165,11 @@ async function executeRecommendedPull(
         totalFetched,
         newJobs,
         duplicates,
-        status: allFailed ? "failed" : "completed",
+        status: cancelledRuns.has(run.id)
+          ? "cancelled"
+          : allFailed
+            ? "failed"
+            : "completed",
         errorMessage: allFailed ? lastErrorMessage : null,
       },
     });
@@ -240,4 +247,8 @@ export async function startRecommendedPull(): Promise<number> {
   });
 
   return run.id;
+}
+
+export function cancelRecommendedRun(runId: number) {
+  cancelledRuns.add(runId);
 }

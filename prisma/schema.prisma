@@ -171,11 +171,10 @@ model RecommendedMatch {
   runId Int
   jobId Int
   score Float @default(0)
-  rank  Int   @default(0)
 
   run RecommendedRun @relation(fields: [runId], references: [id])
   job Job            @relation(fields: [jobId], references: [id])
 
   @@unique([runId, jobId])
-  @@index([runId, rank])
+  @@index([runId])
 }

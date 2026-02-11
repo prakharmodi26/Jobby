@@ -124,11 +124,9 @@ dashboardRouter.get("/recent", async (_req, res) => {
     .map((job) => ({
       ...job,
       score: scoreMap.get(job.id) ?? 0,
-      rank: 0,
       savedStatus: job.savedJobs[0]?.status ?? null,
     }))
-    .sort((a, b) => b.score - a.score)
-    .map((r, i) => ({ ...r, rank: i + 1 }));
+    .sort((a, b) => b.score - a.score);
 
   res.json(result);
 });

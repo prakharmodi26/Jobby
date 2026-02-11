@@ -34,7 +34,7 @@ jobsRouter.get("/recommended", async (req, res) => {
       FROM "RecommendedMatch" rm
       JOIN "RecommendedRun" rr ON rr."id" = rm."runId"
       JOIN "Job" j ON j."id" = rm."jobId"
-      WHERE rr."status" IN ('completed', 'running')
+      WHERE rr."status" IN ('completed', 'running', 'cancelled')
         AND j."ignored" = false
         AND (j."postedAt" >= ${cutoff} OR j."postedAt" IS NULL)
       ORDER BY rm."jobId", rm."score" DESC
@@ -87,7 +87,7 @@ jobsRouter.get("/recommended", async (req, res) => {
 
   // Determine sort
   const validJobSorts = ["postedAt", "discoveredAt", "title", "company"];
-  const sortByScore = sort === "score" || sort === "rank";
+  const sortByScore = sort === "score";
 
   const dbOrder: Record<string, string> = {};
   if (!sortByScore && validJobSorts.includes(sort)) {
@@ -109,19 +109,15 @@ jobsRouter.get("/recommended", async (req, res) => {
     return {
       ...job,
       score: match?.score ?? 0,
-      rank: 0,
       savedStatus: job.savedJobs[0]?.status ?? null,
       savedId: job.savedJobs[0]?.id ?? null,
     };
   });
 
-  // Sort by score if needed, then assign ranks and paginate
+  // Sort and paginate
   if (sortByScore) {
     results.sort((a, b) => order === "asc" ? a.score - b.score : b.score - a.score);
-    results = results.map((r, i) => ({ ...r, rank: i + 1 }));
     results = results.slice(offset, offset + limit);
-  } else {
-    results = results.map((r, i) => ({ ...r, rank: offset + i + 1 }));
   }
 
   res.json({
@@ -399,7 +395,6 @@ jobsRouter.get("/search", async (req, res) => {
             runId: run.id,
             jobId: s.jobId,
             score: s.score,
-            rank: idx + 1,
           })),
           skipDuplicates: true,
         });

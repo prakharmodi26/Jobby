@@ -7,7 +7,7 @@ import { JobDetailPanel } from "@/components/jobs/JobDetailPanel";
 import { cn } from "@/lib/utils";
 
 interface RunStatus {
-  status: "none" | "running" | "completed" | "failed";
+  status: "none" | "running" | "completed" | "failed" | "cancelled";
   runId?: number;
   runAt?: string;
   totalFetched?: number;
@@ -16,13 +16,12 @@ interface RunStatus {
   errorMessage?: string;
 }
 
-type SortOption = "rank" | "score" | "postedAt" | "discoveredAt";
+type SortOption = "score" | "postedAt" | "discoveredAt";
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: "rank", label: "Best Match" },
   { value: "score", label: "Score" },
   { value: "postedAt", label: "Date Posted" },
-  { value: "discoveredAt", label: "Date Discovered" },
+  { value: "discoveredAt", label: "Latest Pull" },
 ];
 
 const EMPLOYMENT_TYPE_OPTIONS = [
@@ -40,13 +39,14 @@ export default function RecommendedPage() {
   const [pulling, setPulling] = useState(false);
   const [pullError, setPullError] = useState<string | null>(null);
   const [quotaWarning, setQuotaWarning] = useState<string | null>(null);
+  const [currentRunId, setCurrentRunId] = useState<number | null>(null);
   const wasPullingRef = useRef(false);
 
   // Filters & sorting
   const [search, setSearch] = useState("");
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState<string[]>([]);
-  const [sort, setSort] = useState<SortOption>("rank");
+  const [sort, setSort] = useState<SortOption>("score");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
 
   const fetchJobs = useCallback(async (opts?: { silent?: boolean }) => {
@@ -56,7 +56,7 @@ export default function RecommendedPage() {
         page: String(page),
         limit: "20",
         sort,
-        order: sort === "rank" ? "asc" : order,
+        order,
       });
       if (search.trim()) params.set("search", search.trim());
       if (remoteOnly) params.set("remote", "true");
@@ -79,6 +79,9 @@ export default function RecommendedPage() {
       const status = await apiFetch<RunStatus>("/api/admin/recommended-status");
       const isRunning = status.status === "running";
       setPulling(isRunning);
+      if (status.runId) {
+        setCurrentRunId(status.runId);
+      }
       if (status.status === "failed" && status.errorMessage) {
         const msg = status.errorMessage.toLowerCase();
         if (msg.includes("429") || msg.includes("quota")) {
@@ -124,13 +127,14 @@ export default function RecommendedPage() {
     setPullError(null);
     setQuotaWarning(null);
     try {
-      const res = await apiFetch<{ started?: boolean; error?: string }>(
+      const res = await apiFetch<{ started?: boolean; error?: string; runId?: number }>(
         "/api/admin/run-recommended",
         { method: "POST" }
       );
       if (res.started) {
         setPulling(true);
         wasPullingRef.current = true;
+        if (res.runId) setCurrentRunId(res.runId);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -140,6 +144,21 @@ export default function RecommendedPage() {
       } else {
         setPullError(msg);
       }
+    }
+  };
+
+  const handleCancelPull = async () => {
+    if (!currentRunId) return;
+    try {
+      await apiFetch("/api/admin/cancel-recommended", {
+        method: "POST",
+        body: JSON.stringify({ runId: currentRunId }),
+      });
+      setQuotaWarning(null);
+      setPulling(false);
+      wasPullingRef.current = false;
+    } catch (err) {
+      console.error("Failed to cancel pull", err);
     }
   };
 
@@ -161,21 +180,20 @@ export default function RecommendedPage() {
     fetchJobs();
   };
 
-  const pullButton = (
+  const pullButton = pulling ? (
+    <button
+      onClick={handleCancelPull}
+      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-red-100 text-red-700 hover:bg-red-200"
+    >
+      <div className="h-4 w-4 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
+      Cancel Pull
+    </button>
+  ) : (
     <button
       onClick={handlePullRecommended}
-      disabled={pulling}
-      className={cn(
-        "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
-        pulling
-          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-          : "bg-emerald-600 text-white hover:bg-emerald-700"
-      )}
+      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-emerald-600 text-white hover:bg-emerald-700"
     >
-      {pulling && (
-        <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
-      )}
-      {pulling ? "Pulling..." : "Pull Recommended"}
+      Pull Recommended
     </button>
   );
 
@@ -343,11 +361,11 @@ export default function RecommendedPage() {
             <button
               key={opt.value}
               onClick={() => {
-                if (sort === opt.value && opt.value !== "rank") {
+                if (sort === opt.value) {
                   setOrder((o) => (o === "desc" ? "asc" : "desc"));
                 } else {
                   setSort(opt.value);
-                  setOrder("desc");
+                  setOrder(opt.value === "discoveredAt" ? "desc" : "desc");
                 }
                 setPage(1);
               }}
@@ -359,7 +377,7 @@ export default function RecommendedPage() {
               )}
             >
               {opt.label}
-              {sort === opt.value && opt.value !== "rank" && (
+              {sort === opt.value && (
                 <span className="ml-1">{order === "desc" ? "\u2193" : "\u2191"}</span>
               )}
             </button>
@@ -373,12 +391,12 @@ export default function RecommendedPage() {
         </div>
       </div>
 
-      {pulling && (
-        <div className="mb-3 flex items-center gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-          <div className="h-3 w-3 rounded-full border-2 border-blue-700 border-t-transparent animate-spin" />
-          <span>Live updating — new results appear as queries finish.</span>
-        </div>
-      )}
+          {pulling && (
+            <div className="mb-3 flex items-center gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+              <div className="h-3 w-3 rounded-full border-2 border-blue-700 border-t-transparent animate-spin" />
+              <span>Live updating — new results appear as queries finish.</span>
+            </div>
+          )}
       {quotaWarning && (
         <div className="mb-3 flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
           <span className="text-lg leading-none">⚠</span>

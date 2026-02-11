@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
-import { startRecommendedPull } from "../services/recommendedRunner.js";
+import { startRecommendedPull, cancelRecommendedRun } from "../services/recommendedRunner.js";
 
 export const adminRouter = Router();
 
@@ -26,6 +26,16 @@ adminRouter.post("/run-recommended", async (_req, res) => {
       .status(500)
       .json({ error: err instanceof Error ? err.message : String(err) });
   }
+});
+
+adminRouter.post("/cancel-recommended", async (req, res) => {
+  const { runId } = req.body as { runId?: number };
+  if (!runId) {
+    res.status(400).json({ error: "runId is required" });
+    return;
+  }
+  cancelRecommendedRun(runId);
+  res.json({ cancelled: true, runId });
 });
 
 // Clear all recommended matches and runs

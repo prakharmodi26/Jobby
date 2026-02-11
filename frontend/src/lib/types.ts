@@ -29,7 +29,6 @@ export interface Job {
   ignored: boolean;
   // Joined fields
   score?: number;
-  rank?: number;
   savedStatus?: string | null;
   savedId?: number | null;
   notes?: string | null;
