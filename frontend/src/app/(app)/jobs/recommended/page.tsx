@@ -40,6 +40,8 @@ export default function RecommendedPage() {
   const [pullError, setPullError] = useState<string | null>(null);
   const [quotaWarning, setQuotaWarning] = useState<string | null>(null);
   const [currentRunId, setCurrentRunId] = useState<number | null>(null);
+  const [rescoring, setRescoring] = useState(false);
+  const [rescoreMsg, setRescoreMsg] = useState<string | null>(null);
   const wasPullingRef = useRef(false);
 
   // Filters & sorting
@@ -126,6 +128,7 @@ export default function RecommendedPage() {
   const handlePullRecommended = async () => {
     setPullError(null);
     setQuotaWarning(null);
+    setRescoreMsg(null);
     try {
       const res = await apiFetch<{ started?: boolean; error?: string; runId?: number }>(
         "/api/admin/run-recommended",
@@ -162,6 +165,26 @@ export default function RecommendedPage() {
     }
   };
 
+  const handleRescore = async () => {
+    setRescoreMsg(null);
+    setRescoring(true);
+    try {
+      const result = await apiFetch<{ added: number; removed: number; alreadyRecommended: number }>(
+        "/api/jobs/rescore",
+        { method: "POST" }
+      );
+      setRescoreMsg(
+        `Rescored — added ${result.added}, removed ${result.removed}, kept ${result.alreadyRecommended}`
+      );
+      fetchJobs();
+    } catch (err) {
+      console.error(err);
+      setRescoreMsg("Rescore failed. Please try again.");
+    } finally {
+      setRescoring(false);
+    }
+  };
+
   const handleSave = async (jobId: number) => {
     await apiFetch(`/api/jobs/${jobId}/save`, { method: "POST" });
     fetchJobs();
@@ -194,6 +217,22 @@ export default function RecommendedPage() {
       className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-emerald-600 text-white hover:bg-emerald-700"
     >
       Pull Recommended
+    </button>
+  );
+
+  const rescoreButton = (
+    <button
+      onClick={handleRescore}
+      disabled={rescoring || pulling}
+      className={cn(
+        "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors border",
+        rescoring
+          ? "bg-gray-100 text-gray-600 border-gray-200"
+          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+      )}
+    >
+      {rescoring && <div className="h-4 w-4 rounded-full border-2 border-gray-500 border-t-transparent animate-spin" />}
+      {rescoring ? "Rescoring..." : "Rescore Recommended"}
     </button>
   );
 
@@ -269,6 +308,7 @@ export default function RecommendedPage() {
             </button>
           ))}
           {pullButton}
+          {rescoreButton}
         </div>
 
         <div className="text-center py-16">
@@ -376,19 +416,27 @@ export default function RecommendedPage() {
                   : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
               )}
             >
-              {opt.label}
-              {sort === opt.value && (
-                <span className="ml-1">{order === "desc" ? "\u2193" : "\u2191"}</span>
-              )}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
+            {opt.label}
+            {sort === opt.value && (
+              <span className="ml-1">{order === "desc" ? "\u2193" : "\u2191"}</span>
+            )}
+          </button>
+        ))}
+      </div>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           {pullError && (
             <p className="text-red-500 text-sm">{pullError}</p>
           )}
+          {rescoreButton}
           {pullButton}
+          {rescoreButton}
         </div>
+
+        {rescoreMsg && (
+          <div className="mb-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+            {rescoreMsg}
+          </div>
+        )}
       </div>
 
           {pulling && (
@@ -404,6 +452,11 @@ export default function RecommendedPage() {
             <p className="font-medium">API usage limit is finished.</p>
             <p className="text-red-600">Change the API key or wait and try again.</p>
           </div>
+        </div>
+      )}
+      {rescoreMsg && (
+        <div className="mb-3 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+          {rescoreMsg}
         </div>
       )}
 

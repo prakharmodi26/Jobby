@@ -164,8 +164,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [rescoring, setRescoring] = useState(false);
-  const [rescoreMsg, setRescoreMsg] = useState<string | null>(null);
   // Core targeting
   const [targetTitles, setTargetTitles] = useState<string[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
@@ -283,25 +281,6 @@ export default function ProfilePage() {
       console.error(err);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleRescore = async () => {
-    setRescoreMsg(null);
-    setRescoring(true);
-    try {
-      const result = await apiFetch<{ ok: boolean; added: number; removed: number; alreadyRecommended: number }>(
-        "/api/jobs/rescore",
-        { method: "POST" }
-      );
-      setRescoreMsg(
-        `Rescored — added ${result.added}, removed ${result.removed}, kept ${result.alreadyRecommended}`
-      );
-    } catch (err) {
-      console.error(err);
-      setRescoreMsg("Rescore failed. Please try again.");
-    } finally {
-      setRescoring(false);
     }
   };
 
@@ -629,15 +608,8 @@ export default function ProfilePage() {
       {/* Sticky save button */}
       <div className="sticky bottom-0 left-0 right-0 bg-white/90 backdrop-blur border-t border-gray-200 py-3 -mx-6 px-6 flex flex-wrap items-center gap-3">
         <button
-          onClick={handleRescore}
-          disabled={rescoring || saving}
-          className="px-4 py-2.5 text-sm font-medium rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-        >
-          {rescoring ? "Rescoring..." : "Rescore Recommended"}
-        </button>
-        <button
           onClick={handleSave}
-          disabled={saving || rescoring}
+          disabled={saving}
           className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {saving ? "Saving..." : "Save Profile"}
@@ -645,11 +617,6 @@ export default function ProfilePage() {
         {saved && (
           <span className="text-sm text-green-600 font-medium">
             Saved successfully
-          </span>
-        )}
-        {rescoreMsg && (
-          <span className="text-sm text-gray-600">
-            {rescoreMsg}
           </span>
         )}
       </div>
