@@ -10,17 +10,19 @@ function TagInput({
   placeholder,
   tags,
   onChange,
+  max,
 }: {
   label: string;
   placeholder: string;
   tags: string[];
   onChange: (tags: string[]) => void;
+  max?: number;
 }) {
   const [input, setInput] = useState("");
 
   const addTag = () => {
     const val = input.trim();
-    if (!val || tags.includes(val)) {
+    if (!val || tags.includes(val) || (max && tags.length >= max)) {
       setInput("");
       return;
     }
