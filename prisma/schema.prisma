@@ -96,7 +96,7 @@ model Settings {
   coverLetterModel        String   @default("vt-arc")
 
   // Minimum score for a job to enter recommendations
-  minRecommendedScore     Int      @default(0)
+  minRecommendedScore     Int      @default(50)
 
   updatedAt               DateTime @updatedAt
 }

@@ -165,7 +165,7 @@ const DEFAULTS: Partial<Settings> = {
   weightCitizenship: -50,
   weightOptCptBoost: 20,
   weightAvoidKeyword: -15,
-  minRecommendedScore: 0,
+  minRecommendedScore: 50,
 };
 
 const CRON_PRESETS = [
@@ -224,7 +224,10 @@ export default function SettingsPage() {
   const [recommendedDatePosted, setRecommendedDatePosted] = useState("week");
   const [recommendedExpiryDays, setRecommendedExpiryDays] = useState(5);
   const [excludePublishers, setExcludePublishers] = useState<string[]>([]);
-  const [minRecommendedScore, setMinRecommendedScore] = useState(0);
+  const [minRecommendedScore, setMinRecommendedScore] = useState(50);
+  const [clearingRecommended, setClearingRecommended] = useState(false);
+  const [clearingJobs, setClearingJobs] = useState(false);
+  const [maintenanceMsg, setMaintenanceMsg] = useState("");
 
   // Cron
   const [cronSchedule, setCronSchedule] = useState("0 */12 * * *");
@@ -461,6 +464,38 @@ export default function SettingsPage() {
       console.error(err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleClearRecommended = async () => {
+    if (!confirm("Clear all recommended matches and runs? This cannot be undone.")) return;
+    setClearingRecommended(true);
+    setMaintenanceMsg("");
+    try {
+      await apiFetch("/api/admin/clear-recommended", { method: "POST" });
+      setMaintenanceMsg("Recommended data cleared.");
+    } catch (err) {
+      setMaintenanceMsg(
+        err instanceof Error ? err.message : "Failed to clear recommended data"
+      );
+    } finally {
+      setClearingRecommended(false);
+    }
+  };
+
+  const handleClearJobs = async () => {
+    if (!confirm("Clear ALL jobs, saved jobs, and recommendations? This cannot be undone.")) return;
+    setClearingJobs(true);
+    setMaintenanceMsg("");
+    try {
+      await apiFetch("/api/admin/clear-jobs", { method: "POST" });
+      setMaintenanceMsg("All jobs and related data cleared.");
+    } catch (err) {
+      setMaintenanceMsg(
+        err instanceof Error ? err.message : "Failed to clear jobs data"
+      );
+    } finally {
+      setClearingJobs(false);
     }
   };
 
@@ -1006,6 +1041,31 @@ export default function SettingsPage() {
               Reset to Defaults
             </button>
           </div>
+        </Section>
+
+        {/* ==================== Maintenance ==================== */}
+        <Section title="Data Maintenance">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={handleClearRecommended}
+              disabled={clearingRecommended}
+              className="px-4 py-2.5 bg-amber-100 text-amber-800 text-sm font-medium rounded-xl border border-amber-200 hover:bg-amber-200 disabled:opacity-60"
+            >
+              {clearingRecommended ? "Clearing…" : "Clear Recommended"}
+            </button>
+            <button
+              type="button"
+              onClick={handleClearJobs}
+              disabled={clearingJobs}
+              className="px-4 py-2.5 bg-red-100 text-red-800 text-sm font-medium rounded-xl border border-red-200 hover:bg-red-200 disabled:opacity-60"
+            >
+              {clearingJobs ? "Clearing…" : "Clear All Jobs"}
+            </button>
+          </div>
+          {maintenanceMsg && (
+            <p className="text-sm text-gray-600 pt-2">{maintenanceMsg}</p>
+          )}
         </Section>
 
         {/* ==================== Save Button ==================== */}

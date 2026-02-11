@@ -39,6 +39,7 @@ export default function RecommendedPage() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [pulling, setPulling] = useState(false);
   const [pullError, setPullError] = useState<string | null>(null);
+  const [quotaWarning, setQuotaWarning] = useState<string | null>(null);
   const wasPullingRef = useRef(false);
 
   // Filters & sorting
@@ -78,6 +79,16 @@ export default function RecommendedPage() {
       const status = await apiFetch<RunStatus>("/api/admin/recommended-status");
       const isRunning = status.status === "running";
       setPulling(isRunning);
+      if (status.status === "failed" && status.errorMessage) {
+        const msg = status.errorMessage.toLowerCase();
+        if (msg.includes("429") || msg.includes("quota")) {
+          setQuotaWarning("API usage limit is finished. Change the API key or wait, then pull again.");
+        } else {
+          setQuotaWarning(null);
+        }
+      } else if (status.status === "completed") {
+        setQuotaWarning(null);
+      }
 
       if (wasPullingRef.current && !isRunning) {
         fetchJobs();
@@ -111,6 +122,7 @@ export default function RecommendedPage() {
 
   const handlePullRecommended = async () => {
     setPullError(null);
+    setQuotaWarning(null);
     try {
       const res = await apiFetch<{ started?: boolean; error?: string }>(
         "/api/admin/run-recommended",
@@ -184,6 +196,15 @@ export default function RecommendedPage() {
           <div className="mb-4 flex items-center gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
             <div className="h-3 w-3 rounded-full border-2 border-blue-700 border-t-transparent animate-spin" />
             <span>Pull in progress — new recommendations will appear live.</span>
+          </div>
+        )}
+        {quotaWarning && (
+          <div className="mb-4 flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <span className="text-lg leading-none">⚠</span>
+            <div>
+              <p className="font-medium">API usage limit is finished.</p>
+              <p className="text-red-600">Change the API key or wait and try again.</p>
+            </div>
           </div>
         )}
         {/* Toolbar */}
@@ -356,6 +377,15 @@ export default function RecommendedPage() {
         <div className="mb-3 flex items-center gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
           <div className="h-3 w-3 rounded-full border-2 border-blue-700 border-t-transparent animate-spin" />
           <span>Live updating — new results appear as queries finish.</span>
+        </div>
+      )}
+      {quotaWarning && (
+        <div className="mb-3 flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <span className="text-lg leading-none">⚠</span>
+          <div>
+            <p className="font-medium">API usage limit is finished.</p>
+            <p className="text-red-600">Change the API key or wait and try again.</p>
+          </div>
         </div>
       )}
 

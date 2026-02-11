@@ -321,7 +321,13 @@ jobsRouter.get("/search", async (req, res) => {
     results = await searchJobs(searchParams);
   } catch (err) {
     console.error("[Search] JSearch API call failed:", err);
-    throw err;
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("429") || msg.toLowerCase().includes("quota")) {
+      res.status(429).json({ error: "Search failed: API usage limit reached." });
+      return;
+    }
+    res.status(502).json({ error: "Search failed. Please try again." });
+    return;
   }
 
   console.log(`[Search] JSearch returned ${results.data?.length ?? 0} jobs`);
@@ -365,7 +371,7 @@ jobsRouter.get("/search", async (req, res) => {
 
   // Record a run and insert matches for jobs meeting the min score
   if (profile && scoredForRun.length > 0) {
-    const minScore = settings.minRecommendedScore ?? 0;
+    const minScore = settings.minRecommendedScore ?? 50;
     const filtered = scoredForRun
       .filter((s) => s.score >= minScore)
       .sort((a, b) => b.score - a.score);

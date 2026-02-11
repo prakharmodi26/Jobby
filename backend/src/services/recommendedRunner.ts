@@ -22,7 +22,7 @@ async function executeRecommendedPull(
   let queryErrors = 0;
   let lastErrorMessage = "";
   const jobIdsThisRun: number[] = [];
-  const minScore = settings?.minRecommendedScore ?? 0;
+  const minScore = settings?.minRecommendedScore ?? 50;
 
   async function upsertMatchesIncremental(jobIds: number[]) {
     if (jobIds.length === 0) return;

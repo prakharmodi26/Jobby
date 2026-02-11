@@ -28,6 +28,38 @@ adminRouter.post("/run-recommended", async (_req, res) => {
   }
 });
 
+// Clear all recommended matches and runs
+adminRouter.post("/clear-recommended", async (_req, res) => {
+  try {
+    await prisma.$transaction([
+      prisma.recommendedMatch.deleteMany(),
+      prisma.recommendedRun.deleteMany(),
+    ]);
+    res.json({ success: true });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Clear all jobs and related data (matches, saved jobs, runs)
+adminRouter.post("/clear-jobs", async (_req, res) => {
+  try {
+    await prisma.$transaction([
+      prisma.recommendedMatch.deleteMany(),
+      prisma.savedJob.deleteMany(),
+      prisma.recommendedRun.deleteMany(),
+      prisma.job.deleteMany(),
+    ]);
+    res.json({ success: true });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 adminRouter.get("/recommended-status", async (_req, res) => {
   try {
     const latestRun = await prisma.recommendedRun.findFirst({

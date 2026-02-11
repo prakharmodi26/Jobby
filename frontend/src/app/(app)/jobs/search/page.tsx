@@ -89,6 +89,7 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Restore from session storage on mount
   useEffect(() => {
@@ -118,6 +119,7 @@ export default function SearchPage() {
 
       setLoading(true);
       setSearched(true);
+      setErrorMsg(null);
       try {
         const params = new URLSearchParams({ query: query.trim(), country });
         params.set("num_pages", String(numPages));
@@ -151,6 +153,8 @@ export default function SearchPage() {
           searched: true,
         });
       } catch (err) {
+        const msg = err instanceof Error ? err.message : "Search failed";
+        setErrorMsg(msg);
         console.error(err);
       } finally {
         setLoading(false);
@@ -196,6 +200,12 @@ export default function SearchPage() {
     <div>
       {/* Search form */}
       <form onSubmit={handleSearch} className="space-y-4 mb-6">
+        {errorMsg && (
+          <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+            <span className="text-lg leading-none">⚠</span>
+            <span>{errorMsg}</span>
+          </div>
+        )}
         {/* Query input */}
         <div className="flex gap-3">
           <div className="flex-1 relative">
