@@ -22,6 +22,7 @@ async function executeRecommendedPull(
   let queryErrors = 0;
   let lastErrorMessage = "";
   const jobIdsThisRun: number[] = [];
+  const minScore = settings?.minRecommendedScore ?? 0;
 
   async function upsertMatchesIncremental(jobIds: number[]) {
     if (jobIds.length === 0) return;
@@ -35,6 +36,7 @@ async function executeRecommendedPull(
         jobId: job.id,
         score: settings ? scoreJob(job, profile, settings) : 0,
       }))
+      .filter((s) => s.score >= minScore)
       .sort((a, b) => b.score - a.score);
 
     // Upsert scores/ranks so frontend can read while run is still executing
@@ -145,9 +147,11 @@ async function executeRecommendedPull(
       score: settings ? scoreJob(job, profile, settings) : 0,
     }));
 
-    scored.sort((a, b) => b.score - a.score);
+    const filtered = scored
+      .filter((s) => s.score >= minScore)
+      .sort((a, b) => b.score - a.score);
 
-    await upsertMatchesIncremental(jobIdsThisRun);
+    await upsertMatchesIncremental(filtered.map((s) => s.jobId));
 
     // If every query failed (e.g. quota exceeded), mark as failed so previous results stay visible
     const allFailed = totalFetched === 0 && queryErrors > 0 && queryErrors === queries.length;
@@ -179,7 +183,10 @@ export async function runRecommendedPull() {
     throw new Error("Profile not configured — set target titles first");
   }
 
-  const settings = await prisma.settings.findFirst() as Settings | null;
+  let settings = (await prisma.settings.findFirst()) as Settings | null;
+  if (!settings) {
+    settings = await prisma.settings.create({ data: {} });
+  }
 
   const run = await prisma.recommendedRun.create({
     data: {
@@ -207,7 +214,10 @@ export async function startRecommendedPull(): Promise<number> {
     throw new Error("Profile not configured — set target titles first");
   }
 
-  const settings = await prisma.settings.findFirst() as Settings | null;
+  let settings = (await prisma.settings.findFirst()) as Settings | null;
+  if (!settings) {
+    settings = await prisma.settings.create({ data: {} });
+  }
 
   const run = await prisma.recommendedRun.create({
     data: {

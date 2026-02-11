@@ -285,16 +285,21 @@ jobsRouter.get("/search", async (req, res) => {
   }
 
   // Load profile for defaults and scoring, load settings for search params and weights
-  const [profile, settings] = await Promise.all([
+  const [profile, settingsRaw] = await Promise.all([
     prisma.profile.findFirst(),
     prisma.settings.findFirst() as Promise<Settings | null>,
   ]);
+  const settings =
+    settingsRaw ??
+    (await prisma.settings.create({
+      data: {},
+    }));
 
   // Build search params — user-provided values override settings/profile defaults
   const searchParams = {
     query: query as string,
     page: parseInt(page as string) || 1,
-    num_pages: parseInt(num_pages as string) || settings?.searchNumPages || 3,
+    num_pages: parseInt(num_pages as string) || settings.searchNumPages || 3,
     country: (country as string) || "us",
     language: (language as string) || undefined,
     date_posted: (date_posted as string) || undefined,
@@ -326,6 +331,7 @@ jobsRouter.get("/search", async (req, res) => {
   let newCount = 0;
   let dupeCount = 0;
   let errorCount = 0;
+  const scoredForRun: { jobId: number; score: number }[] = [];
 
   for (const apiJob of results.data) {
     try {
@@ -339,10 +345,14 @@ jobsRouter.get("/search", async (req, res) => {
       if (job) {
         localJobs.push({
           ...job,
-          score: profile && settings ? scoreJob(job, profile, settings) : 0,
+          score: profile ? scoreJob(job, profile, settings) : 0,
           savedStatus: job.savedJobs[0]?.status ?? null,
           savedId: job.savedJobs[0]?.id ?? null,
         });
+        if (profile) {
+          const score = scoreJob(job, profile, settings);
+          scoredForRun.push({ jobId: job.id, score });
+        }
       }
     } catch (err) {
       errorCount++;
@@ -353,8 +363,53 @@ jobsRouter.get("/search", async (req, res) => {
   console.log(`[Search] Upsert results — new: ${newCount}, dupes: ${dupeCount}, errors: ${errorCount}`);
   console.log(`[Search] Responding with ${localJobs.length} jobs`);
 
+  // Record a run and insert matches for jobs meeting the min score
+  if (profile && scoredForRun.length > 0) {
+    const minScore = settings.minRecommendedScore ?? 0;
+    const filtered = scoredForRun
+      .filter((s) => s.score >= minScore)
+      .sort((a, b) => b.score - a.score);
+
+    try {
+      const run = await prisma.recommendedRun.create({
+        data: {
+          status: "completed",
+          paramsJson: JSON.stringify({
+            source: "search",
+            query,
+            num_pages: searchParams.num_pages,
+            country,
+            date_posted,
+          }),
+          totalFetched: totalFetchedFromResults(results),
+          newJobs: newCount,
+          duplicates: dupeCount,
+        },
+      });
+
+      if (filtered.length > 0) {
+        await prisma.recommendedMatch.createMany({
+          data: filtered.map((s, idx) => ({
+            runId: run.id,
+            jobId: s.jobId,
+            score: s.score,
+            rank: idx + 1,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    } catch (err) {
+      console.error("[Search] Failed to create recommended matches for search:", err);
+    }
+  }
+
   res.json({ jobs: localJobs, total: localJobs.length });
 });
+
+function totalFetchedFromResults(results: { data?: unknown[] }): number {
+  if (!results?.data || !Array.isArray(results.data)) return 0;
+  return results.data.length;
+}
 
 // ---------------------------------------------------------------------------
 // GET /api/jobs/all — paginated view of all discovered jobs with scores

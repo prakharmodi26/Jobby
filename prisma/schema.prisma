@@ -95,6 +95,9 @@ model Settings {
   // Cover letter model selection: "vt-arc" or "gemini"
   coverLetterModel        String   @default("vt-arc")
 
+  // Minimum score for a job to enter recommendations
+  minRecommendedScore     Int      @default(0)
+
   updatedAt               DateTime @updatedAt
 }
 

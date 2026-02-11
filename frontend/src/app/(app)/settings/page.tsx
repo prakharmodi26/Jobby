@@ -165,6 +165,7 @@ const DEFAULTS: Partial<Settings> = {
   weightCitizenship: -50,
   weightOptCptBoost: 20,
   weightAvoidKeyword: -15,
+  minRecommendedScore: 0,
 };
 
 const CRON_PRESETS = [
@@ -223,6 +224,7 @@ export default function SettingsPage() {
   const [recommendedDatePosted, setRecommendedDatePosted] = useState("week");
   const [recommendedExpiryDays, setRecommendedExpiryDays] = useState(5);
   const [excludePublishers, setExcludePublishers] = useState<string[]>([]);
+  const [minRecommendedScore, setMinRecommendedScore] = useState(0);
 
   // Cron
   const [cronSchedule, setCronSchedule] = useState("0 */12 * * *");
@@ -295,6 +297,7 @@ export default function SettingsPage() {
       setRecommendedDatePosted(settings.recommendedDatePosted);
       setRecommendedExpiryDays(settings.recommendedExpiryDays ?? 5);
       setExcludePublishers(settings.excludePublishers);
+      setMinRecommendedScore(settings.minRecommendedScore ?? DEFAULTS.minRecommendedScore!);
 
       // Cron
       setCronSchedule(settings.cronSchedule);
@@ -424,6 +427,7 @@ export default function SettingsPage() {
           recommendedDatePosted,
           recommendedExpiryDays,
           excludePublishers,
+          minRecommendedScore,
           cronSchedule: resolvedCron,
           coverLetterModel,
           weightSkillMatch,
@@ -485,6 +489,7 @@ export default function SettingsPage() {
     setWeightCitizenship(DEFAULTS.weightCitizenship!);
     setWeightOptCptBoost(DEFAULTS.weightOptCptBoost!);
     setWeightAvoidKeyword(DEFAULTS.weightAvoidKeyword!);
+    setMinRecommendedScore(DEFAULTS.minRecommendedScore!);
   };
 
   /* ---------- render ---------- */
@@ -631,6 +636,20 @@ export default function SettingsPage() {
                 }
                 className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Minimum recommended score
+              </label>
+              <input
+                type="number"
+                value={minRecommendedScore}
+                onChange={(e) => setMinRecommendedScore(parseInt(e.target.value) || 0)}
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-400 mt-0.5">
+                Only jobs at or above this score enter recommendations.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">

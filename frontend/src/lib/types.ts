@@ -89,6 +89,7 @@ export interface Settings {
   weightCitizenship: number;
   weightOptCptBoost: number;
   weightAvoidKeyword: number;
+  minRecommendedScore: number;
   cronSchedule: string;
   searchNumPages: number;
   recommendedNumPages: number;

@@ -44,6 +44,7 @@ settingsRouter.put("/", async (req, res) => {
     "weightExpUnder",
     "weightCitizenship",
     "weightOptCptBoost",
+    "minRecommendedScore",
     "weightAvoidKeyword",
     // Cron schedule
     "cronSchedule",
