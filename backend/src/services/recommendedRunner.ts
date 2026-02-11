@@ -5,6 +5,9 @@ import { scoreJob } from "./scoring.js";
 import type { JSearchParams } from "./jsearch.js";
 import type { Settings, Profile, RecommendedRun } from "@prisma/client";
 
+// Tracks runIds requested for cancellation; checked per query batch
+const cancelledRuns = new Set<number>();
+
 function mapYearsToRequirement(years: number | null): string | undefined {
   if (years === null || years === undefined) return undefined;
   if (years < 3) return "under_3_years_experience";
@@ -21,9 +24,8 @@ async function executeRecommendedPull(
   let duplicates = 0;
   let queryErrors = 0;
   let lastErrorMessage = "";
-const jobIdsThisRun: number[] = [];
-const minScore = settings?.minRecommendedScore ?? 50;
-const cancelledRuns = new Set<number>();
+  const jobIdsThisRun: number[] = [];
+  const minScore = settings?.minRecommendedScore ?? 50;
 
   async function upsertMatchesIncremental(jobIds: number[]) {
     if (jobIds.length === 0) return;
