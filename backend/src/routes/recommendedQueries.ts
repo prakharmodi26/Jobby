@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 
 export const recommendedQueriesRouter = Router();
@@ -71,7 +72,7 @@ recommendedQueriesRouter.post("/", async (req, res) => {
       res.status(400).json({ error });
       return;
     }
-    const data = pickData(req.body);
+    const data = pickData(req.body) as Prisma.RecommendedQueryCreateInput;
     const created = await prisma.recommendedQuery.create({ data });
     res.status(201).json(created);
   } catch (err) {

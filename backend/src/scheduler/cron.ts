@@ -1,6 +1,6 @@
 import cron, { type ScheduledTask } from "node-cron";
 import { prisma } from "../prisma.js";
-import { runRecommendedPull } from "../services/recommendedRunner.js";
+import { startRecommendedPull } from "../services/recommendedRunner.js";
 
 let currentTask: ScheduledTask | null = null;
 
@@ -8,7 +8,7 @@ function createCronTask(schedule: string): ScheduledTask {
   return cron.schedule(schedule, async () => {
     console.log("[CRON] Starting recommended pull...");
     try {
-      const run = await runRecommendedPull();
+      const run = await startRecommendedPull();
       console.log(
         `[CRON] Completed. Fetched: ${run.totalFetched}, New: ${run.newJobs}, Dupes: ${run.duplicates}`
       );

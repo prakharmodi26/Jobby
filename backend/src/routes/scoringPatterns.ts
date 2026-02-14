@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 
 export const scoringPatternsRouter = Router();
@@ -59,7 +60,7 @@ scoringPatternsRouter.post("/", async (req, res) => {
       res.status(400).json({ error });
       return;
     }
-    const data = pickData(req.body);
+    const data = pickData(req.body) as Prisma.ScoringPatternCreateInput;
     const created = await prisma.scoringPattern.create({ data });
     res.status(201).json(created);
   } catch (err) {
