@@ -8,10 +8,8 @@ function createCronTask(schedule: string): ScheduledTask {
   return cron.schedule(schedule, async () => {
     console.log("[CRON] Starting recommended pull...");
     try {
-      const run = await startRecommendedPull();
-      console.log(
-        `[CRON] Completed. Fetched: ${run.totalFetched}, New: ${run.newJobs}, Dupes: ${run.duplicates}`
-      );
+      const runId = await startRecommendedPull();
+      console.log(`[CRON] Recommended pull started (run #${runId})`);
     } catch (error) {
       console.error("[CRON] Recommended pull failed:", error);
     }
