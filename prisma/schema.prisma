@@ -16,87 +16,30 @@ model User {
 }
 
 model Profile {
-  id                      Int      @id @default(autoincrement())
-
-  // Core targeting
-  targetTitles            String[] @default([])
-  skills                  String[] @default([])
-  preferredLocations      String[] @default([])
-  remotePreferred         Boolean  @default(false)
-  citizenshipNotRequired  Boolean  @default(true)
-
-  // Role preferences
-  seniority               String   @default("")
-  yearsOfExperience       String[] @default([]) // values like: no_experience, under_3_years_experience, more_than_3_years_experience
-  roleTypes               String[] @default([])
-  workModePreference      String   @default("")
-
-  // Compensation
-  minSalary               Int?
-  maxSalary               Int?
-
-  // Education
-  education               String   @default("")
-  degrees                 String[] @default([])
-
-  // Industry & company
-  industries              String[] @default([])
-  companySizePreference   String   @default("")
-  companyTypes            String[] @default([])
-
-  // Keywords to avoid in scoring
-  avoidKeywords           String[] @default([])
-
-  // Cover letter profile (markdown)
-  userMd                  String   @default("")
-
-  updatedAt               DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  userMd    String   @default("")
+  updatedAt DateTime @updatedAt
 }
 
 model Settings {
-  id                      Int      @id @default(autoincrement())
-
-  // Scoring weights
-  weightSkillMatch        Int      @default(10)
-  weightTargetTitle       Int      @default(10)
-  weightRecencyDay1       Int      @default(30)
-  weightRecencyDay3       Int      @default(20)
-  weightRecencyWeek       Int      @default(10)
-  weightWorkModeMatch     Int      @default(10)
-  weightSeniorityMatch    Int      @default(20)
-  weightSeniorityMismatch Int      @default(-15)
-  weightSalaryOverlap     Int      @default(15)
-  weightSalaryBelow       Int      @default(-20)
-  weightIndustryMatch     Int      @default(10)
-  weightEducationMeet     Int      @default(5)
-  weightEducationUnder    Int      @default(-10)
-  weightCompanySize       Int      @default(10)
-  weightExpMatch          Int      @default(10)
-  weightExpMismatch       Int      @default(-15)
-  weightCitizenship       Int      @default(-50)
-  weightOptCptBoost       Int      @default(20)
-
-  // Penalty for avoid-keyword matches
-  weightAvoidKeyword      Int      @default(-15)
+  id                  Int      @id @default(autoincrement())
 
   // Cron schedule (default: every 12 hours = 2x/day)
-  cronSchedule            String   @default("0 */12 * * *")
-  cronEnabled             Boolean  @default(true)
+  cronSchedule        String   @default("0 */12 * * *")
+  cronEnabled         Boolean  @default(true)
 
-  // Search settings (moved from Profile)
-  searchNumPages          Int      @default(3)
-  recommendedNumPages     Int      @default(1)
-  recommendedDatePosted   String   @default("week")
-  recommendedExpiryDays   Int      @default(5)
-  excludePublishers       String[] @default([])
+  // Search settings
+  searchNumPages      Int      @default(3)
+  recommendedNumPages Int      @default(1)
+  recommendedExpiryDays Int    @default(5)
 
-  // Cover letter model selection: "vt-arc" or "gemini"
-  coverLetterModel        String   @default("vt-arc")
+  // Cover letter model selection
+  coverLetterModel    String   @default("vt-arc")
 
   // Minimum score for a job to enter recommendations
-  minRecommendedScore     Int      @default(50)
+  minRecommendedScore Int      @default(50)
 
-  updatedAt               DateTime @updatedAt
+  updatedAt           DateTime @updatedAt
 }
 
 model Job {
@@ -175,4 +118,34 @@ model RecommendedMatch {
 
   @@unique([runId, jobId])
   @@index([runId])
+}
+
+model RecommendedQuery {
+  id                   Int      @id @default(autoincrement())
+  query                String
+  page                 Int      @default(1)
+  numPages             Int      @default(1)
+  country              String   @default("us")
+  language             String?
+  datePosted           String   @default("all")
+  workFromHome         Boolean  @default(false)
+  employmentTypes      String?
+  jobRequirements      String?
+  radius               Int?
+  excludeJobPublishers String?
+  enabled              Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model ScoringPattern {
+  id         Int      @id @default(autoincrement())
+  pattern    String
+  weight     Int      @default(10)
+  effect     String   @default("+")
+  countOnce  Boolean  @default(false)
+  disqualify Boolean  @default(false)
+  enabled    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

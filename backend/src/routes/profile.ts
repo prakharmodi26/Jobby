@@ -18,23 +18,7 @@ profileRouter.put("/", async (req, res) => {
   }
 
   const data: Record<string, unknown> = {};
-  const fields = [
-    // Core targeting
-    "targetTitles", "skills", "preferredLocations",
-    "remotePreferred", "citizenshipNotRequired",
-    // Role preferences
-    "seniority", "yearsOfExperience", "roleTypes", "workModePreference",
-    // Compensation
-    "minSalary", "maxSalary",
-    // Education
-    "education", "degrees",
-    // Industry & company
-    "industries", "companySizePreference", "companyTypes",
-    // Avoid keywords
-    "avoidKeywords",
-    // Cover letter profile
-    "userMd",
-  ];
+  const fields = ["userMd"];
 
   for (const field of fields) {
     if (req.body[field] !== undefined) {

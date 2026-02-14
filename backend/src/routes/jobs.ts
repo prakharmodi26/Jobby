@@ -3,8 +3,7 @@ import { prisma } from "../prisma.js";
 import { searchJobs } from "../services/jsearch.js";
 import { upsertJob } from "../services/jobUpsert.js";
 import { scoreJob } from "../services/scoring.js";
-import { mapYearsToRequirement } from "../services/recommendedRunner.js";
-import type { Prisma, Settings, Profile, RecommendedRun } from "@prisma/client";
+import type { Prisma, Settings, RecommendedRun, ScoringPattern } from "@prisma/client";
 
 export const jobsRouter = Router();
 
@@ -281,10 +280,10 @@ jobsRouter.get("/search", async (req, res) => {
     return;
   }
 
-  // Load profile for defaults and scoring, load settings for search params and weights
-  const [profile, settingsRaw] = await Promise.all([
-    prisma.profile.findFirst(),
+  // Load settings and scoring patterns
+  const [settingsRaw, patterns] = await Promise.all([
     prisma.settings.findFirst() as Promise<Settings | null>,
+    prisma.scoringPattern.findMany({ where: { enabled: true } }),
   ]);
   const settings =
     settingsRaw ??
@@ -292,7 +291,7 @@ jobsRouter.get("/search", async (req, res) => {
       data: {},
     }));
 
-  // Build search params — user-provided values override settings/profile defaults
+  // Build search params — user-provided values override settings defaults
   const searchParams = {
     query: query as string,
     page: parseInt(page as string) || 1,
@@ -300,21 +299,11 @@ jobsRouter.get("/search", async (req, res) => {
     country: (country as string) || "us",
     language: (language as string) || undefined,
     date_posted: (date_posted as string) || undefined,
-    work_from_home: work_from_home === "true"
-      ? true
-      : (work_from_home === undefined && profile?.remotePreferred)
-        ? true
-        : undefined,
-    employment_types: (employment_types as string)
-      || (profile?.roleTypes?.length ? profile.roleTypes.join(",") : undefined),
-    job_requirements:
-      (job_requirements as string) ||
-      (profile?.yearsOfExperience?.length
-        ? mapYearsToRequirement(profile.yearsOfExperience)
-        : undefined),
+    work_from_home: work_from_home === "true" ? true : undefined,
+    employment_types: (employment_types as string) || undefined,
+    job_requirements: (job_requirements as string) || undefined,
     radius: radius ? parseInt(radius as string) : undefined,
-    exclude_job_publishers: (exclude_job_publishers as string)
-      || (settings?.excludePublishers?.length ? settings.excludePublishers.join(",") : undefined),
+    exclude_job_publishers: (exclude_job_publishers as string) || undefined,
   };
 
   let results;
@@ -338,7 +327,7 @@ jobsRouter.get("/search", async (req, res) => {
   let newCount = 0;
   let dupeCount = 0;
   let errorCount = 0;
-  const scoredForRun: { jobId: number; score: number }[] = [];
+  const scoredForRun: { jobId: number; score: number; disqualified: boolean }[] = [];
 
   for (const apiJob of results.data) {
     try {
@@ -350,16 +339,15 @@ jobsRouter.get("/search", async (req, res) => {
         include: { savedJobs: true },
       });
       if (job) {
+        const { score, disqualified } = scoreJob(job, patterns);
         localJobs.push({
           ...job,
-          score: profile ? scoreJob(job, profile, settings) : 0,
+          score,
+          disqualified,
           savedStatus: job.savedJobs[0]?.status ?? null,
           savedId: job.savedJobs[0]?.id ?? null,
         });
-        if (profile) {
-          const score = scoreJob(job, profile, settings);
-          scoredForRun.push({ jobId: job.id, score });
-        }
+        scoredForRun.push({ jobId: job.id, score, disqualified });
       }
     } catch (err) {
       errorCount++;
@@ -371,10 +359,10 @@ jobsRouter.get("/search", async (req, res) => {
   console.log(`[Search] Responding with ${localJobs.length} jobs`);
 
   // Record a run and insert matches for jobs meeting the min score
-  if (profile && scoredForRun.length > 0) {
+  if (scoredForRun.length > 0) {
     const minScore = settings.minRecommendedScore ?? 50;
     const filtered = scoredForRun
-      .filter((s) => s.score >= minScore)
+      .filter((s) => s.score >= minScore && !s.disqualified)
       .sort((a, b) => b.score - a.score);
 
     try {
@@ -396,7 +384,7 @@ jobsRouter.get("/search", async (req, res) => {
 
       if (filtered.length > 0) {
         await prisma.recommendedMatch.createMany({
-          data: filtered.map((s, idx) => ({
+          data: filtered.map((s) => ({
             runId: run.id,
             jobId: s.jobId,
             score: s.score,
@@ -417,24 +405,24 @@ function totalFetchedFromResults(results: { data?: unknown[] }): number {
   return results.data.length;
 }
 
-async function rescoreAllJobs(run: RecommendedRun, profile: Profile, settings: Settings) {
-  const minScore = settings.minRecommendedScore ?? 50;
-
+async function rescoreAllJobs(run: RecommendedRun, patterns: ScoringPattern[], minScore: number) {
   // Score every job
   const jobs = await prisma.job.findMany({ where: { ignored: false } });
   const scored = jobs.map((job) => ({
     jobId: job.id,
-    score: scoreJob(job, profile, settings),
+    ...scoreJob(job, patterns),
   }));
 
-  const toRemoveIds = scored.filter((s) => s.score < minScore).map((s) => s.jobId);
+  const toRemoveIds = scored
+    .filter((s) => s.score < minScore || s.disqualified)
+    .map((s) => s.jobId);
   if (toRemoveIds.length > 0) {
     await prisma.recommendedMatch.deleteMany({
       where: { jobId: { in: toRemoveIds } },
     });
   }
 
-  const above = scored.filter((s) => s.score >= minScore);
+  const above = scored.filter((s) => s.score >= minScore && !s.disqualified);
   const existing = above.length
     ? await prisma.recommendedMatch.findMany({
         where: { jobId: { in: above.map((s) => s.jobId) } },
@@ -554,17 +542,18 @@ jobsRouter.get("/all", async (req, res) => {
     }),
   ]);
 
-  const [profile, allJobsSettings] = await Promise.all([
-    prisma.profile.findFirst(),
-    prisma.settings.findFirst() as Promise<Settings | null>,
-  ]);
+  const allPatterns = await prisma.scoringPattern.findMany({ where: { enabled: true } });
 
-  let scored = jobs.map((job) => ({
-    ...job,
-    score: profile && allJobsSettings ? scoreJob(job, profile, allJobsSettings) : 0,
-    savedStatus: job.savedJobs[0]?.status ?? null,
-    savedId: job.savedJobs[0]?.id ?? null,
-  }));
+  let scored = jobs.map((job) => {
+    const { score, disqualified } = scoreJob(job, allPatterns);
+    return {
+      ...job,
+      score,
+      disqualified,
+      savedStatus: job.savedJobs[0]?.status ?? null,
+      savedId: job.savedJobs[0]?.id ?? null,
+    };
+  });
 
   if (sortByScore) {
     scored.sort((a, b) => order === "asc" ? a.score - b.score : b.score - a.score);
@@ -579,19 +568,17 @@ jobsRouter.get("/all", async (req, res) => {
   });
 });
 
-// POST /api/jobs/rescore — rescore all jobs against current profile/settings
+// POST /api/jobs/rescore — rescore all jobs against current scoring patterns
 jobsRouter.post("/rescore", async (_req, res) => {
   try {
-    const profile = await prisma.profile.findFirst();
-    if (!profile) {
-      res.status(400).json({ error: "Profile not configured yet" });
-      return;
-    }
+    const patterns = await prisma.scoringPattern.findMany({ where: { enabled: true } });
 
     let settings = (await prisma.settings.findFirst()) as Settings | null;
     if (!settings) {
       settings = await prisma.settings.create({ data: {} });
     }
+
+    const minScore = settings.minRecommendedScore ?? 50;
 
     const run = await prisma.recommendedRun.create({
       data: {
@@ -600,7 +587,7 @@ jobsRouter.post("/rescore", async (_req, res) => {
       },
     });
 
-    const summary = await rescoreAllJobs(run, profile, settings);
+    const summary = await rescoreAllJobs(run, patterns, minScore);
 
     res.json({ ok: true, runId: run.id, ...summary });
   } catch (err) {

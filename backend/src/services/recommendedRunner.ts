@@ -3,20 +3,15 @@ import { searchJobs } from "./jsearch.js";
 import { upsertJob } from "./jobUpsert.js";
 import { scoreJob } from "./scoring.js";
 import type { JSearchParams } from "./jsearch.js";
-import type { Settings, Profile, RecommendedRun } from "@prisma/client";
+import type { RecommendedRun, ScoringPattern, RecommendedQuery } from "@prisma/client";
 
-// Tracks runIds requested for cancellation; checked per query batch
 const cancelledRuns = new Set<number>();
-
-export function mapYearsToRequirement(years: string[] | null): string | undefined {
-  if (!years || years.length === 0) return undefined;
-  return years.join(",");
-}
 
 async function executeRecommendedPull(
   run: RecommendedRun,
-  profile: Profile,
-  settings: Settings | null
+  queries: RecommendedQuery[],
+  patterns: ScoringPattern[],
+  minScore: number
 ) {
   let totalFetched = 0;
   let newJobs = 0;
@@ -24,10 +19,6 @@ async function executeRecommendedPull(
   let queryErrors = 0;
   let lastErrorMessage = "";
   const jobIdsThisRun: number[] = [];
-  const minScore = settings?.minRecommendedScore ?? 50;
-  const titles = (profile.targetTitles || []).slice(0, 5);
-  const locations = (profile.preferredLocations || []).slice(0, 5);
-  const skills = (profile.skills || []).slice(0, 5);
 
   async function upsertMatchesIncremental(jobIds: number[]) {
     if (jobIds.length === 0) return;
@@ -39,100 +30,62 @@ async function executeRecommendedPull(
     const scored = jobs
       .map((job) => ({
         jobId: job.id,
-        score: settings ? scoreJob(job, profile, settings) : 0,
+        ...scoreJob(job, patterns),
       }))
-      .filter((s) => s.score >= minScore)
+      .filter((s) => s.score >= minScore && !s.disqualified)
       .sort((a, b) => b.score - a.score);
 
-    // Upsert scores so frontend can read while run is still executing
     await prisma.$transaction(
-      scored.map((s, idx) =>
+      scored.map((s) =>
         prisma.recommendedMatch.upsert({
           where: { runId_jobId: { runId: run.id, jobId: s.jobId } },
-          create: {
-            runId: run.id,
-            jobId: s.jobId,
-            score: s.score,
-          },
-          update: {
-            score: s.score,
-          },
+          create: { runId: run.id, jobId: s.jobId, score: s.score },
+          update: { score: s.score },
         })
       )
     );
   }
 
-  // Shared params from settings + profile
-  const sharedParams: Partial<JSearchParams> = {
-    num_pages: settings?.recommendedNumPages || 1,
-    date_posted: settings?.recommendedDatePosted || "week",
-    employment_types: profile.roleTypes.length > 0 ? profile.roleTypes.join(",") : undefined,
-    job_requirements: mapYearsToRequirement(profile.yearsOfExperience),
-    exclude_job_publishers: settings?.excludePublishers?.length
-      ? settings.excludePublishers.join(",")
-      : undefined,
-  };
-
-  const seniorityPrefix = profile.seniority && profile.seniority !== "mid"
-    ? `${profile.seniority} `
-    : "";
-
   try {
-    const queries: { query: string; work_from_home?: boolean }[] = [];
-
-    for (const title of titles) {
-      const prefixedTitle = `${seniorityPrefix}${title}`;
-
-      // Title + location combinations
-      if (locations.length > 0) {
-        for (const loc of locations) {
-          queries.push({ query: `${prefixedTitle} in ${loc}` });
-        }
-      } else {
-        queries.push({ query: prefixedTitle });
-      }
-
-      // Remote query if preferred
-      if (profile.remotePreferred || profile.workModePreference === "remote") {
-        queries.push({ query: `${prefixedTitle} remote`, work_from_home: true });
-      }
-    }
-
-    // Skill-based queries for all (capped) skills
-    for (const skill of skills) {
-      for (const title of titles) {
-        queries.push({ query: `${skill} ${title}` });
-      }
-    }
-
-    console.log(`[RecommendedPull] Running ${queries.length} queries with num_pages=${sharedParams.num_pages}`);
+    console.log(`[RecommendedPull] Running ${queries.length} queries`);
 
     for (const q of queries) {
       if (cancelledRuns.has(run.id)) {
         console.log(`[RecommendedPull] Run ${run.id} cancelled; stopping remaining queries`);
         break;
       }
+
+      const searchParams: JSearchParams = {
+        query: q.query,
+        page: q.page,
+        num_pages: q.numPages,
+        country: q.country,
+        language: q.language || undefined,
+        date_posted: q.datePosted !== "all" ? q.datePosted : undefined,
+        work_from_home: q.workFromHome || undefined,
+        employment_types: q.employmentTypes || undefined,
+        job_requirements: q.jobRequirements || undefined,
+        radius: q.radius || undefined,
+        exclude_job_publishers: q.excludeJobPublishers || undefined,
+      };
+
+      console.log(
+        `[RecommendedPull] Query #${q.id}: "${q.query}" (country=${q.country}, datePosted=${q.datePosted}, pages=${q.numPages}, remote=${q.workFromHome})`
+      );
+
       try {
-        const response = await searchJobs({
-          query: q.query,
-          ...sharedParams,
-          work_from_home: q.work_from_home || undefined,
-        });
+        const response = await searchJobs(searchParams);
 
         for (const apiJob of response.data) {
           totalFetched++;
           const result = await upsertJob(apiJob);
-          if (result.isNew) {
-            newJobs++;
-          } else {
-            duplicates++;
-          }
+          if (result.isNew) newJobs++;
+          else duplicates++;
           if (!jobIdsThisRun.includes(result.jobId)) {
             jobIdsThisRun.push(result.jobId);
           }
         }
 
-        // Incremental scoring/upsert after each query batch
         await upsertMatchesIncremental(jobIdsThisRun);
       } catch (err) {
         queryErrors++;
@@ -141,25 +94,26 @@ async function executeRecommendedPull(
       }
     }
 
-    console.log(`[RecommendedPull] Fetched ${totalFetched} jobs (${newJobs} new, ${duplicates} dupes), scoring ${jobIdsThisRun.length} unique`);
+    console.log(
+      `[RecommendedPull] Fetched ${totalFetched} jobs (${newJobs} new, ${duplicates} dupes), scoring ${jobIdsThisRun.length} unique`
+    );
 
-    // Score all discovered jobs
+    // Final scoring pass
     const jobs = await prisma.job.findMany({
       where: { id: { in: jobIdsThisRun } },
     });
 
     const scored = jobs.map((job) => ({
       jobId: job.id,
-      score: settings ? scoreJob(job, profile, settings) : 0,
+      ...scoreJob(job, patterns),
     }));
 
     const filtered = scored
-      .filter((s) => s.score >= minScore)
+      .filter((s) => s.score >= minScore && !s.disqualified)
       .sort((a, b) => b.score - a.score);
 
     await upsertMatchesIncremental(filtered.map((s) => s.jobId));
 
-    // If every query failed (e.g. quota exceeded), mark as failed so previous results stay visible
     const allFailed = totalFetched === 0 && queryErrors > 0 && queryErrors === queries.length;
 
     await prisma.recommendedRun.update({
@@ -187,65 +141,41 @@ async function executeRecommendedPull(
   }
 }
 
-export async function runRecommendedPull() {
-  const profile = await prisma.profile.findFirst();
-  if (!profile || profile.targetTitles.length === 0) {
-    throw new Error("Profile not configured — set target titles first");
-  }
-
-  let settings = (await prisma.settings.findFirst()) as Settings | null;
-  if (!settings) {
-    settings = await prisma.settings.create({ data: {} });
-  }
-
-  const run = await prisma.recommendedRun.create({
-    data: {
-      status: "running",
-      paramsJson: JSON.stringify({
-        targetTitles: profile.targetTitles,
-        locations: profile.preferredLocations,
-        remote: profile.remotePreferred,
-        seniority: profile.seniority,
-        skills: profile.skills,
-        numPages: settings?.recommendedNumPages || 1,
-        datePosted: settings?.recommendedDatePosted || "week",
-      }),
-    },
-  });
-
-  const result = await executeRecommendedPull(run, profile, settings);
-
-  return { id: run.id, ...result };
-}
-
 export async function startRecommendedPull(): Promise<number> {
-  const profile = await prisma.profile.findFirst();
-  if (!profile || profile.targetTitles.length === 0) {
-    throw new Error("Profile not configured — set target titles first");
+  const queries = await prisma.recommendedQuery.findMany({
+    where: { enabled: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (queries.length === 0) {
+    throw new Error("No recommended queries configured — add queries in Settings first");
   }
 
-  let settings = (await prisma.settings.findFirst()) as Settings | null;
+  const patterns = await prisma.scoringPattern.findMany({
+    where: { enabled: true },
+  });
+
+  let settings = await prisma.settings.findFirst();
   if (!settings) {
     settings = await prisma.settings.create({ data: {} });
   }
+
+  const minScore = settings.minRecommendedScore ?? 50;
 
   const run = await prisma.recommendedRun.create({
     data: {
       status: "running",
       paramsJson: JSON.stringify({
-        targetTitles: profile.targetTitles,
-        locations: profile.preferredLocations,
-        remote: profile.remotePreferred,
-        seniority: profile.seniority,
-        skills: profile.skills,
-        numPages: settings?.recommendedNumPages || 1,
-        datePosted: settings?.recommendedDatePosted || "week",
+        queryIds: queries.map((q) => q.id),
+        queryTexts: queries.map((q) => q.query),
+        patternCount: patterns.length,
+        minScore,
       }),
     },
   });
 
-  // Fire and forget — don't await
-  executeRecommendedPull(run, profile, settings).catch((err) => {
+  // Fire and forget
+  executeRecommendedPull(run, queries, patterns, minScore).catch((err) => {
     console.error("[RecommendedPull] Background pull failed:", err);
   });
 

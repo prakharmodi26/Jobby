@@ -336,7 +336,7 @@ export default function RecommendedPage() {
               <p className="text-gray-400 text-sm mt-1">
                 {hasFilters
                   ? "Try adjusting your filters"
-                  : "Set up your profile and pull recommended jobs to get started"}
+                  : "Add recommended queries in Settings and pull to get started"}
               </p>
             </>
           )}

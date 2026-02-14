@@ -17,6 +17,8 @@ import { settingsRouter } from "./routes/settings.js";
 import { coverLetterRouter } from "./routes/coverLetter.js";
 import { openrouterRouter } from "./routes/openrouter.js";
 import { profileAIRouter } from "./routes/profileAI.js";
+import { recommendedQueriesRouter } from "./routes/recommendedQueries.js";
+import { scoringPatternsRouter } from "./routes/scoringPatterns.js";
 import { startScheduler } from "./scheduler/cron.js";
 
 const app = express();
@@ -57,6 +59,8 @@ app.use("/api/settings", authMiddleware, settingsRouter);
 app.use("/api/cover-letter", authMiddleware, coverLetterRouter);
 app.use("/api/openrouter", authMiddleware, openrouterRouter);
 app.use("/api/profile", authMiddleware, profileAIRouter);
+app.use("/api/recommended-queries", authMiddleware, recommendedQueriesRouter);
+app.use("/api/scoring-patterns", authMiddleware, scoringPatternsRouter);
 
 // Health check
 app.get("/health", (_req, res) => {

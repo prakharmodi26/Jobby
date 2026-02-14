@@ -22,38 +22,13 @@ settingsRouter.put("/", async (req, res) => {
 
   const data: Record<string, unknown> = {};
   const fields = [
-    // Scoring weights
-    "weightSkillMatch",
-    "weightTargetTitle",
-    "weightRecencyDay1",
-    "weightRecencyDay3",
-    "weightRecencyWeek",
-    "weightWorkModeMatch",
-    "weightSeniorityMatch",
-    "weightSeniorityMismatch",
-    "weightSalaryOverlap",
-    "weightSalaryBelow",
-    "weightIndustryMatch",
-    "weightEducationMeet",
-    "weightEducationUnder",
-    "weightCompanySize",
-    "weightExpMatch",
-    "weightExpMismatch",
-    "weightCitizenship",
-    "weightOptCptBoost",
-    "minRecommendedScore",
-    "weightAvoidKeyword",
-    // Cron schedule
     "cronSchedule",
     "cronEnabled",
-    // Search settings
     "searchNumPages",
     "recommendedNumPages",
-    "recommendedDatePosted",
     "recommendedExpiryDays",
-    "excludePublishers",
-    // Cover letter model
     "coverLetterModel",
+    "minRecommendedScore",
   ];
 
   for (const field of fields) {

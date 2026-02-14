@@ -38,62 +38,49 @@ export interface Job {
 
 export interface Profile {
   id: number;
-  // Core targeting
-  targetTitles: string[];
-  skills: string[];
-  preferredLocations: string[];
-  remotePreferred: boolean;
-  citizenshipNotRequired: boolean;
-  avoidKeywords: string[];
-  // Role preferences
-  seniority: string;
-  yearsOfExperience: string[];
-  roleTypes: string[];
-  workModePreference: string;
-  // Compensation
-  minSalary: number | null;
-  maxSalary: number | null;
-  // Education
-  education: string;
-  degrees: string[];
-  // Industry & company
-  industries: string[];
-  companySizePreference: string;
-  companyTypes: string[];
   userMd: string;
   updatedAt: string;
 }
 
 export interface Settings {
   id: number;
-  weightSkillMatch: number;
-  weightTargetTitle: number;
-  weightRecencyDay1: number;
-  weightRecencyDay3: number;
-  weightRecencyWeek: number;
-  weightWorkModeMatch: number;
-  weightSeniorityMatch: number;
-  weightSeniorityMismatch: number;
-  weightSalaryOverlap: number;
-  weightSalaryBelow: number;
-  weightIndustryMatch: number;
-  weightEducationMeet: number;
-  weightEducationUnder: number;
-  weightCompanySize: number;
-  weightExpMatch: number;
-  weightExpMismatch: number;
-  weightCitizenship: number;
-  weightOptCptBoost: number;
-  weightAvoidKeyword: number;
-  minRecommendedScore: number;
   cronSchedule: string;
   cronEnabled: boolean;
   searchNumPages: number;
   recommendedNumPages: number;
-  recommendedDatePosted: string;
   recommendedExpiryDays: number;
-  excludePublishers: string[];
   coverLetterModel: string;
+  minRecommendedScore: number;
+  updatedAt: string;
+}
+
+export interface RecommendedQuery {
+  id: number;
+  query: string;
+  page: number;
+  numPages: number;
+  country: string;
+  language: string | null;
+  datePosted: string;
+  workFromHome: boolean;
+  employmentTypes: string | null;
+  jobRequirements: string | null;
+  radius: number | null;
+  excludeJobPublishers: string | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScoringPattern {
+  id: number;
+  pattern: string;
+  weight: number;
+  effect: string;
+  countOnce: boolean;
+  disqualify: boolean;
+  enabled: boolean;
+  createdAt: string;
   updatedAt: string;
 }
 
