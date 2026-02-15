@@ -21,6 +21,13 @@ Jobby is a **single-user, self-hosted job board** that automatically discovers j
 
 ---
 
+## 🎥 Demo
+
+- Live demo: [jobbydemo.prakharmodi.me](https://jobbydemo.prakharmodi.me)
+- Login credentials: `demo_jobby` / `demopass`
+
+---
+
 ## 🏗️ Architecture
 
 ```
